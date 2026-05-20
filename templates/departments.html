@@ -1,0 +1,816 @@
+{% extends "base.html" %}
+
+{% block title %}Departments | Trash to Treasure{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">🏫 Departments</h1>
+            <p class="text-muted mb-0">Monitor and compare performance across departments</p>
+        </div>
+        <div>
+            <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addDepartmentModal">
+                <i data-lucide="plus-circle"></i>
+                Add New Department
+            </button>
+            <button class="btn btn-primary me-2">
+                <i data-lucide="download"></i>
+                Export Report
+            </button>
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i data-lucide="refresh-cw"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Department Performance Table -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Department Performance Overview</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Total Students</th>
+                                <th>Total Bottles</th>
+                                <th>Total Points</th>
+                                <th>Top Recycler</th>
+                                <th>Avg per Student</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if departments %}
+                                {% for dept in departments %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="dept-icon me-2">
+                                                {% if 'Engineering' in dept.name or 'Computer' in dept.name %}🔧
+                                                {% elif 'Science' in dept.name %}🔬
+                                                {% elif 'Business' in dept.name %}�
+                                                {% elif 'Arts' in dept.name or 'Humanities' in dept.name %}🎨
+                                                {% elif 'Medical' in dept.name or 'Health' in dept.name %}⚕️
+                                                {% elif 'Education' in dept.name %}📚
+                                                {% elif 'Senior High' in dept.name or 'High School' in dept.name %}🎓
+                                                {% else %}🏫{% endif %}
+                                            </div>
+                                            <strong>{{ dept.name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>{{ dept.students }}</td>
+                                    <td><span class="fw-bold">{{ dept.bottles }}</span></td>
+                                    <td><span class="fw-bold text-success">{{ dept.points }}</span></td>
+                                    <td>{{ dept.top_recycler }}</td>
+                                    <td>
+                                        <span class="fw-bold {% if dept.avg >= 50 %}text-success{% elif dept.avg >= 20 %}text-warning{% else %}text-danger{% endif %}">
+                                            {{ dept.avg }}
+                                        </span>
+                                        bottles/student
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary view-details-btn me-1" 
+                                                data-dept-index="{{ loop.index0 }}"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#departmentModal"
+                                                title="View Details">
+                                            <i data-lucide="eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning edit-dept-btn me-1" 
+                                                data-dept-id="{{ dept.id }}"
+                                                data-dept-index="{{ loop.index0 }}"
+                                                title="Edit Department">
+                                            <i data-lucide="edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-dept-btn" 
+                                                data-dept-id="{{ dept.id }}"
+                                                data-dept-name="{{ dept.name }}"
+                                                title="Delete Department">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i data-lucide="building"></i>
+                                        <p class="mt-2">No departments found. Create departments to get started!</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-4">
+        <!-- Top 5 Departments by Points -->
+        <div class="col-lg-6 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Top 5 Departments by Points</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="chart-container">
+                        <canvas id="topDepartmentsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Growth Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Monthly Growth Trend</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="chartType" id="bottles" checked>
+                        <label class="btn btn-outline-primary" for="bottles">Bottles</label>
+                        <input type="radio" class="btn-check" name="chartType" id="points">
+                        <label class="btn btn-outline-primary" for="points">Points</label>
+                    </div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="chart-container">
+                        <canvas id="growthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Comparison Grid -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Department Quick Stats</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="row">
+                        {% if departments %}
+                            {% for dept in departments[:5] %}
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                                <div class="metric-card">
+                                    <div class="metric-card-header">
+                                        <div class="metric-icon" style="background-color: 
+                                            {% if loop.index == 1 %}#dcfce7; color: #166534;
+                                            {% elif loop.index == 2 %}#dbeafe; color: #1e40af;
+                                            {% elif loop.index == 3 %}#fef3c7; color: #92400e;
+                                            {% elif loop.index == 4 %}#fee2e2; color: #991b1b;
+                                            {% else %}#f3e8ff; color: #7c2d12;{% endif %}">
+                                            {% if 'Engineering' in dept.name or 'Computer' in dept.name %}🔧
+                                            {% elif 'Science' in dept.name %}🔬
+                                            {% elif 'Business' in dept.name %}�
+                                            {% elif 'Arts' in dept.name or 'Humanities' in dept.name %}🎨
+                                            {% elif 'Medical' in dept.name or 'Health' in dept.name %}⚕️
+                                            {% elif 'Education' in dept.name %}📚
+                                            {% elif 'Senior High' in dept.name or 'High School' in dept.name %}🎓
+                                            {% else %}🏫{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="metric-value">{{ dept.bottles }}</div>
+                                    <div class="metric-label">{{ dept.name }}</div>
+                                    <div class="metric-change positive">
+                                        <i data-lucide="trending-up"></i>
+                                        {{ dept.students }} students
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="status-badge {% if loop.index == 1 %}success{% elif loop.index == 2 %}info{% elif loop.index == 3 %}warning{% else %}danger{% endif %}">
+                                            {% if loop.index == 1 %}Leading
+                                            {% elif loop.index == 2 %}Strong
+                                            {% elif loop.index == 3 %}Average
+                                            {% else %}Needs Attention{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i data-lucide="info"></i>
+                                    No department data available. Create departments to get started!
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Details Modal -->
+    <div class="modal fade" id="departmentModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i data-lucide="building"></i>
+                        <span id="modalDeptName">Department Details</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Department Overview -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">📊 Department Overview</h6>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <div class="card border-0 shadow-sm bg-light">
+                                        <div class="card-body text-center">
+                                            <i data-lucide="users" class="text-primary mb-2" style="width: 32px; height: 32px;"></i>
+                                            <h3 class="mb-0" id="modalTotalStudents">0</h3>
+                                            <small class="text-muted">Total Students</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card border-0 shadow-sm bg-light">
+                                        <div class="card-body text-center">
+                                            <i data-lucide="bottle" class="text-success mb-2" style="width: 32px; height: 32px;"></i>
+                                            <h3 class="mb-0" id="modalTotalBottles">0</h3>
+                                            <small class="text-muted">Total Bottles</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card border-0 shadow-sm bg-light">
+                                        <div class="card-body text-center">
+                                            <i data-lucide="award" class="text-warning mb-2" style="width: 32px; height: 32px;"></i>
+                                            <h3 class="mb-0" id="modalTotalPoints">0</h3>
+                                            <small class="text-muted">Total Points</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card border-0 shadow-sm bg-light">
+                                        <div class="card-body text-center">
+                                            <i data-lucide="trending-up" class="text-info mb-2" style="width: 32px; height: 32px;"></i>
+                                            <h3 class="mb-0" id="modalAvgBottles">0</h3>
+                                            <small class="text-muted">Avg per Student</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Department Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">📍 Department Information</h6>
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <td class="text-muted" style="width: 140px;"><strong>Location:</strong></td>
+                                            <td id="modalLocation">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted"><strong>Bottle Rate:</strong></td>
+                                            <td id="modalBottleRate">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted"><strong>Top Recycler:</strong></td>
+                                            <td>
+                                                <span class="badge bg-success" id="modalTopRecycler">-</span>
+                                                <small class="text-muted ms-2" id="modalTopRecyclerBottles"></small>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">👤 Department Admin</h6>
+                                    <div id="adminInfo">
+                                        <table class="table table-sm table-borderless">
+                                            <tr>
+                                                <td class="text-muted" style="width: 140px;"><strong>Name:</strong></td>
+                                                <td id="modalAdminName">Not Assigned</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted"><strong>Position:</strong></td>
+                                                <td id="modalAdminPosition">-</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted"><strong>Email:</strong></td>
+                                                <td><a href="#" id="modalAdminEmail">-</a></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted"><strong>Phone:</strong></td>
+                                                <td id="modalAdminPhone">-</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted"><strong>Office:</strong></td>
+                                                <td id="modalAdminOffice">-</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted"><strong>Office Hours:</strong></td>
+                                                <td id="modalAdminHours">-</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Students List -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="card-title text-muted mb-0">🎓 Students List</h6>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="exportStudentList()">
+                                            <i data-lucide="download" style="width: 16px; height: 16px;"></i>
+                                            Export
+                                        </button>
+                                    </div>
+                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                        <table class="table table-hover table-sm">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Student ID</th>
+                                                    <th>Full Name</th>
+                                                    <th>Year Level</th>
+                                                    <th>Course</th>
+                                                    <th>Bottles</th>
+                                                    <th>Points</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="modalStudentsList">
+                                                <tr>
+                                                    <td colspan="8" class="text-center text-muted py-4">
+                                                        No students found
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="printDepartmentReport()">
+                        <i data-lucide="printer" style="width: 16px; height: 16px;"></i>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Department Modal -->
+    <div class="modal fade" id="addDepartmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i data-lucide="plus-circle"></i>
+                        Add New Department
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="addDepartmentForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="addDeptName" class="form-label">Department Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="addDeptName" required>
+                            <div class="form-text">Enter the full name of the department</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDeptLocation" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="addDeptLocation" placeholder="e.g., Building A, 2nd Floor">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDeptIcon" class="form-label">Icon</label>
+                            <select class="form-select" id="addDeptIcon">
+                                <option value="🏫" selected>🏫 School Building</option>
+                                <option value="🔧">🔧 Engineering</option>
+                                <option value="💻">💻 Computer</option>
+                                <option value="🔬">🔬 Science</option>
+                                <option value="💼">💼 Business</option>
+                                <option value="🎨">🎨 Arts</option>
+                                <option value="⚕️">⚕️ Medical</option>
+                                <option value="📚">📚 Education</option>
+                                <option value="🎓">🎓 Academic</option>
+                                <option value="🏭">🏭 Industrial</option>
+                                <option value="🌾">🌾 Agriculture</option>
+                                <option value="🐟">🐟 Fisheries</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDeptDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="addDeptDescription" rows="3" placeholder="Brief description of the department"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="addDeptBottleRate" class="form-label">Bottle Rate (points)</label>
+                                <input type="number" class="form-control" id="addDeptBottleRate" value="1" min="0" step="0.1">
+                                <div class="form-text">Points per bottle</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="addDeptOrder" class="form-label">Display Order</label>
+                                <input type="number" class="form-control" id="addDeptOrder" value="0" min="0">
+                                <div class="form-text">Lower numbers appear first</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDeptStatus" class="form-label">Status</label>
+                            <select class="form-select" id="addDeptStatus">
+                                <option value="active" selected>Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i data-lucide="check"></i>
+                            Add Department
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Department Modal -->
+    <div class="modal fade" id="editDepartmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i data-lucide="edit"></i>
+                        Edit Department
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editDepartmentForm">
+                    <input type="hidden" id="editDeptId">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="editDeptName" class="form-label">Department Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editDeptName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDeptLocation" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="editDeptLocation">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDeptIcon" class="form-label">Icon</label>
+                            <select class="form-select" id="editDeptIcon">
+                                <option value="🏫">🏫 School Building</option>
+                                <option value="🔧">🔧 Engineering</option>
+                                <option value="💻">💻 Computer</option>
+                                <option value="🔬">🔬 Science</option>
+                                <option value="💼">💼 Business</option>
+                                <option value="🎨">🎨 Arts</option>
+                                <option value="⚕️">⚕️ Medical</option>
+                                <option value="📚">📚 Education</option>
+                                <option value="🎓">🎓 Academic</option>
+                                <option value="🏭">🏭 Industrial</option>
+                                <option value="🌾">🌾 Agriculture</option>
+                                <option value="🐟">🐟 Fisheries</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDeptDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editDeptDescription" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editDeptBottleRate" class="form-label">Bottle Rate (points)</label>
+                                <input type="number" class="form-control" id="editDeptBottleRate" min="0" step="0.1">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editDeptOrder" class="form-label">Display Order</label>
+                                <input type="number" class="form-control" id="editDeptOrder" min="0">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDeptStatus" class="form-label">Status</label>
+                            <select class="form-select" id="editDeptStatus">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i data-lucide="save"></i>
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Department Modal -->
+    <div class="modal fade" id="deleteDepartmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i data-lucide="alert-triangle"></i>
+                        Delete Department
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the department <strong id="deleteDeptName"></strong>?</p>
+                    <div class="alert alert-warning" role="alert">
+                        <i data-lucide="alert-circle"></i>
+                        <strong>Warning:</strong> This action cannot be undone. The department can only be deleted if:
+                        <ul class="mb-0 mt-2">
+                            <li>No students are currently enrolled</li>
+                            <li>No transactions are associated with it</li>
+                        </ul>
+                    </div>
+                    <input type="hidden" id="deleteDeptId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i data-lucide="trash-2"></i>
+                        Delete Department
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Department data for JavaScript -->
+<script id="departmentsData" type="application/json">{{ departments | tojson | safe }}</script>
+
+<!-- Department CRUD JavaScript -->
+<script src="{{ url_for('static', filename='js/departments.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get real data from backend
+    const departments = {{ departments | tojson | safe }};
+    
+    // Prepare data for charts
+    const deptLabels = departments.slice(0, 5).map(d => d.name);
+    const deptPoints = departments.slice(0, 5).map(d => d.points);
+    const deptBottles = departments.slice(0, 5).map(d => d.bottles);
+    
+    // Handle View Details button clicks
+    document.querySelectorAll('.view-details-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const deptIndex = parseInt(this.getAttribute('data-dept-index'));
+            const dept = departments[deptIndex];
+            loadDepartmentDetails(dept);
+        });
+    });
+    
+    // Top Departments Chart (Real Data)
+    const topDeptCtx = document.getElementById('topDepartmentsChart');
+    if (topDeptCtx && deptLabels.length > 0) {
+        new Chart(topDeptCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: deptLabels,
+                datasets: [{
+                    label: 'Points',
+                    data: deptPoints,
+                    backgroundColor: [
+                        '#10b981',
+                        '#3b82f6',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 500
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Growth Chart (Monthly Trend - using estimated data based on current stats)
+    const growthCtx = document.getElementById('growthChart');
+    if (growthCtx && departments.length > 0) {
+        // Generate estimated monthly data based on current totals
+        const monthlyDatasets = departments.slice(0, 5).map((dept, index) => {
+            const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+            const currentBottles = dept.bottles;
+            
+            // Estimate monthly growth (assume current total divided by 6 months)
+            const monthlyBase = Math.floor(currentBottles / 6);
+            const monthlyData = [];
+            for (let i = 1; i <= 6; i++) {
+                monthlyData.push(Math.floor(monthlyBase * i * (0.8 + Math.random() * 0.4)));
+            }
+            
+            return {
+                label: dept.name,
+                data: monthlyData,
+                borderColor: colors[index],
+                backgroundColor: colors[index] + '1A',
+                tension: 0.4
+            };
+        });
+        
+        let growthChart = new Chart(growthCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: monthlyDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Chart type switcher (Bottles vs Points)
+        document.querySelectorAll('input[name="chartType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.id === 'bottles') {
+                    // Show bottles data (already loaded)
+                    growthChart.data.datasets.forEach((dataset, index) => {
+                        const dept = departments[index];
+                        const currentBottles = dept.bottles;
+                        const monthlyBase = Math.floor(currentBottles / 6);
+                        const monthlyData = [];
+                        for (let i = 1; i <= 6; i++) {
+                            monthlyData.push(Math.floor(monthlyBase * i * (0.8 + Math.random() * 0.4)));
+                        }
+                        dataset.data = monthlyData;
+                    });
+                } else {
+                    // Show points data
+                    growthChart.data.datasets.forEach((dataset, index) => {
+                        const dept = departments[index];
+                        const currentPoints = dept.points;
+                        const monthlyBase = Math.floor(currentPoints / 6);
+                        const monthlyData = [];
+                        for (let i = 1; i <= 6; i++) {
+                            monthlyData.push(Math.floor(monthlyBase * i * (0.8 + Math.random() * 0.4)));
+                        }
+                        dataset.data = monthlyData;
+                    });
+                }
+                growthChart.update();
+            });
+        });
+    }
+    
+    // Reinitialize Lucide icons
+    setTimeout(() => {
+        lucide.createIcons();
+    }, 100);
+});
+
+// Function to load department details into modal
+function loadDepartmentDetails(dept) {
+    // Update modal title
+    document.getElementById('modalDeptName').textContent = dept.name;
+    
+    // Update overview stats
+    document.getElementById('modalTotalStudents').textContent = dept.students;
+    document.getElementById('modalTotalBottles').textContent = dept.bottles.toLocaleString();
+    document.getElementById('modalTotalPoints').textContent = dept.points.toLocaleString();
+    document.getElementById('modalAvgBottles').textContent = dept.avg;
+    
+    // Update department information
+    document.getElementById('modalLocation').textContent = dept.location || 'Not specified';
+    document.getElementById('modalBottleRate').textContent = dept.bottle_rate ? `${dept.bottle_rate} point(s) per bottle` : 'Not set';
+    document.getElementById('modalTopRecycler').textContent = dept.top_recycler;
+    document.getElementById('modalTopRecyclerBottles').textContent = dept.top_recycler_bottles ? `(${dept.top_recycler_bottles} bottles)` : '';
+    
+    // Update admin information
+    if (dept.admin && dept.admin.name && dept.admin.name !== 'Not Assigned') {
+        document.getElementById('modalAdminName').textContent = dept.admin.name;
+        document.getElementById('modalAdminPosition').textContent = dept.admin.position || '-';
+        
+        const emailEl = document.getElementById('modalAdminEmail');
+        if (dept.admin.email) {
+            emailEl.textContent = dept.admin.email;
+            emailEl.href = `mailto:${dept.admin.email}`;
+        } else {
+            emailEl.textContent = '-';
+            emailEl.href = '#';
+        }
+        
+        document.getElementById('modalAdminPhone').textContent = dept.admin.phone || '-';
+        document.getElementById('modalAdminOffice').textContent = dept.admin.office || '-';
+        document.getElementById('modalAdminHours').textContent = dept.admin.hours || '-';
+    } else {
+        document.getElementById('modalAdminName').textContent = 'Not Assigned';
+        document.getElementById('modalAdminPosition').textContent = '-';
+        document.getElementById('modalAdminEmail').textContent = '-';
+        document.getElementById('modalAdminEmail').href = '#';
+        document.getElementById('modalAdminPhone').textContent = '-';
+        document.getElementById('modalAdminOffice').textContent = '-';
+        document.getElementById('modalAdminHours').textContent = '-';
+    }
+    
+    // Update students list
+    const studentsList = document.getElementById('modalStudentsList');
+    if (dept.students_list && dept.students_list.length > 0) {
+        studentsList.innerHTML = dept.students_list.map((student, index) => {
+            const statusBadge = student.status === 'active' ? 'bg-success' : 
+                              student.status === 'pending' ? 'bg-warning' : 
+                              student.status === 'suspended' ? 'bg-danger' : 'bg-secondary';
+            
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><strong>${student.student_id}</strong></td>
+                    <td>${student.name}</td>
+                    <td>${student.year_level || '-'}</td>
+                    <td>${student.course || '-'}</td>
+                    <td><span class="badge bg-primary">${student.bottles.toLocaleString()}</span></td>
+                    <td><span class="badge bg-success">${student.points.toLocaleString()}</span></td>
+                    <td><span class="badge ${statusBadge}">${student.status}</span></td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        studentsList.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center text-muted py-4">
+                    No students found in this department
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Reinitialize Lucide icons in modal
+    setTimeout(() => {
+        lucide.createIcons();
+    }, 100);
+}
+
+// Function to export student list
+function exportStudentList() {
+    alert('Export functionality will be implemented soon!');
+    // TODO: Implement CSV export of student list
+}
+
+// Function to print department report
+function printDepartmentReport() {
+    window.print();
+    // TODO: Implement formatted department report printing
+}
+</script>
+{% endblock %}

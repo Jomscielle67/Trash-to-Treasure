@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "394142732292",
+    "project_id": "trash-to-treasure-76528",
+    "storage_bucket": "trash-to-treasure-76528.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394142732292:android:57390736955d70df2fe551",
+        "android_client_info": {
+          "package_name": "com.example.t2t_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQKyIi38q2NSJdOiok2h4LYm9EYrq8VJA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394142732292:android:ed55f957d65611de2fe551",
+        "android_client_info": {
+          "package_name": "com.example.triple_t"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQKyIi38q2NSJdOiok2h4LYm9EYrq8VJA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

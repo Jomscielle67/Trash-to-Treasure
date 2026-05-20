@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}Rewards | Trash to Treasure{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">🎁 Rewards Management</h1>
+            <p class="text-muted mb-0">Manage and review all redeemable items</p>
+        </div>
+        <div>
+            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addRewardModal">
+                <i data-lucide="plus"></i>
+                Add New Reward
+            </button>
+            <button class="btn btn-outline-primary">
+                <i data-lucide="refresh-cw"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Analytics Widget -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dcfce7; color: #166534;">
+                        🎁
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.total_rewards or 24 }}</div>
+                <div class="metric-label">Total Rewards</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    +3 this week
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dbeafe; color: #1e40af;">
+                        ✅
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.active_rewards or 18 }}</div>
+                <div class="metric-label">Active Rewards</div>
+                <div class="metric-change positive">
+                    <i data-lucide="check"></i>
+                    75% available
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fef3c7; color: #92400e;">
+                        📦
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.out_of_stock or 6 }}</div>
+                <div class="metric-label">Out of Stock</div>
+                <div class="metric-change negative">
+                    <i data-lucide="alert-triangle"></i>
+                    Need restocking
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fee2e2; color: #991b1b;">
+                        🔥
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.redeemed_today or 12 }}</div>
+                <div class="metric-label">Redeemed Today</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    +4 from yesterday
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 3 Most Redeemed Items -->
+    <div class="row mb-4">
+        <div class="col-lg-4 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">🏆 Top 3 Most Redeemed</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    {% for item in top_redeemed or [
+                        {'name': 'Coffee Voucher', 'count': 45, 'points': 50, 'rank': 1},
+                        {'name': 'Eco T-Shirt', 'count': 32, 'points': 100, 'rank': 2},
+                        {'name': 'Notebook Set', 'count': 28, 'points': 30, 'rank': 3}
+                    ] %}
+                    <div class="d-flex align-items-center mb-3 {% if not loop.last %}border-bottom pb-3{% endif %}">
+                        <div class="rank-badge me-3">
+                            {% if item.rank == 1 %}🥇
+                            {% elif item.rank == 2 %}🥈
+                            {% else %}🥉{% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">{{ item.name }}</div>
+                            <small class="text-muted">{{ item.count }} redeemed • {{ item.points }} points</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Redemption Chart -->
+        <div class="col-lg-8 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Redemption Trends</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="chart-container">
+                        <canvas id="redemptionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="filters-container">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="searchRewards">Search Rewards</label>
+                <input type="text" id="searchRewards" class="form-control" placeholder="Search by name or department...">
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterDepartment">Department</label>
+                <select id="filterDepartment" class="form-select">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.lower() }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterPoints">Points Range</label>
+                <select id="filterPoints" class="form-select">
+                    <option value="">All Ranges</option>
+                    <option value="0-50">0-50 points</option>
+                    <option value="51-100">51-100 points</option>
+                    <option value="101-200">101-200 points</option>
+                    <option value="200+">200+ points</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <button type="button" class="btn btn-outline-secondary" id="clearFiltersBtn">
+                    <i data-lucide="filter-x"></i>
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rewards Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="table-title">All Rewards</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Item Name</th>
+                        <th>Department</th>
+                        <th>Points Cost</th>
+                        <th>Stock</th>
+                        <th>Added By</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="rewardsTableBody">
+                    {% for reward in rewards %}
+                    <tr data-reward-id="{{ reward.id }}" 
+                        data-name="{{ reward.name }}" 
+                        data-department="{{ reward.department }}" 
+                        data-status="{{ reward.status }}"
+                        data-points="{{ reward.cost }}">
+                        <td>
+                            <div class="reward-image">
+                                🎁
+                            </div>
+                        </td>
+                        <td>
+                            <strong>{{ reward.name }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ reward.department }}</span>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-success">{{ reward.cost }}</span> points
+                        </td>
+                        <td>
+                            <span class="fw-bold {% if reward.stock == 0 %}text-danger{% elif reward.stock < 10 %}text-warning{% else %}text-success{% endif %}">
+                                {{ reward.stock }}
+                            </span>
+                        </td>
+                        <td>{{ reward.created_by or 'Admin' }}</td>
+                        <td>
+                            <span class="status-badge {% if reward.status == 'active' %}success{% elif reward.status == 'out_of_stock' %}warning{% else %}danger{% endif %}">
+                                {% if reward.status == 'active' %}Active
+                                {% elif reward.status == 'out_of_stock' %}Out of Stock
+                                {% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary edit-reward-btn" 
+                                        data-reward-id="{{ reward.id }}"
+                                        title="Edit">
+                                    <i data-lucide="edit"></i>
+                                </button>
+                                <button class="btn btn-outline-success restock-reward-btn" 
+                                        data-reward-id="{{ reward.id }}"
+                                        data-reward-name="{{ reward.name }}"
+                                        title="Restock">
+                                    <i data-lucide="package-plus"></i>
+                                </button>
+                                <button class="btn btn-outline-danger delete-reward-btn" 
+                                        data-reward-id="{{ reward.id }}"
+                                        data-reward-name="{{ reward.name }}"
+                                        title="Delete">
+                                    <i data-lucide="trash-2"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add New Reward Modal -->
+<div class="modal fade" id="addRewardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Reward</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addRewardForm">
+                    <div class="mb-3">
+                        <label for="rewardName" class="form-label">Reward Name</label>
+                        <input type="text" class="form-control" id="rewardName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rewardDepartment" class="form-label">Department</label>
+                        <select class="form-select" id="rewardDepartment" required>
+                            <option value="">Select Department</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept }}">{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rewardPoints" class="form-label">Points Required</label>
+                        <input type="number" class="form-control" id="rewardPoints" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rewardStock" class="form-label">Initial Stock</label>
+                        <input type="number" class="form-control" id="rewardStock" min="0" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rewardDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="rewardDescription" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rewardImage" class="form-label">Image Upload</label>
+                        <input type="file" class="form-control" id="rewardImage" accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Add Reward</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Reward Modal -->
+<div class="modal fade" id="editRewardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Reward</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editRewardForm">
+                    <input type="hidden" id="editRewardId">
+                    
+                    <div class="mb-3">
+                        <label for="editRewardName" class="form-label">Reward Name</label>
+                        <input type="text" class="form-control" id="editRewardName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editRewardDepartment" class="form-label">Department</label>
+                        <select class="form-select" id="editRewardDepartment" required>
+                            <option value="">Select Department</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept }}">{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editRewardPoints" class="form-label">Points Required</label>
+                        <input type="number" class="form-control" id="editRewardPoints" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editRewardStock" class="form-label">Stock</label>
+                        <input type="number" class="form-control" id="editRewardStock" min="0" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="editRewardForm" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Restock Modal -->
+<div class="modal fade" id="restockModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Restock Reward</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="restockForm">
+                    <input type="hidden" id="restockRewardId">
+                    
+                    <p class="mb-3">Add stock to: <strong id="restockRewardName"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label for="restockQuantity" class="form-label">Quantity to Add</label>
+                        <input type="number" class="form-control" id="restockQuantity" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="restockForm" class="btn btn-success">Add Stock</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="deleteRewardId">
+                <p class="mb-2">Are you sure you want to delete:</p>
+                <p class="fw-bold mb-3" id="deleteRewardName"></p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.reward-image {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.rank-badge {
+    font-size: 1.5rem;
+    width: 40px;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/rewards.js') }}"></script>
+{% endblock %}

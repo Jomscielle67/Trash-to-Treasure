@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Issue | Trash to Treasure</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+
+        :root {
+            --t2t-dark:       #0f1f0f;
+            --t2t-dark2:      #162616;
+            --t2t-dark3:      #1e3420;
+            --t2t-green:      #22c55e;
+            --t2t-green-lite: #4ade80;
+            --t2t-border:     rgba(255,255,255,0.12);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { font-family:'Open Sans',sans-serif; background:#0a150a; color:#fff; overflow-x:hidden; }
+        h1,h2,h3,.brand-logo { font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; }
+
+        .announcement-bar {
+            background:var(--t2t-dark); border-bottom:1px solid rgba(34,197,94,.25);
+            padding:10px 0; text-align:center; font-size:.82rem; font-weight:600;
+            letter-spacing:.04em; color:var(--t2t-green-lite);
+        }
+
+        .main-nav {
+            position:sticky; top:0; z-index:1000;
+            background:rgba(15,31,15,.97); backdrop-filter:blur(12px);
+            border-bottom:1px solid var(--t2t-border);
+        }
+        .nav-inner { display:flex; align-items:center; justify-content:space-between; max-width:1400px; margin:0 auto; padding:0 2rem; height:68px; }
+        .nav-links { display:flex; gap:2.2rem; list-style:none; }
+        .nav-links a { color:rgba(255,255,255,.75); text-decoration:none; font-size:.78rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; transition:color .25s; }
+        .nav-links a:hover, .nav-links a.active { color:var(--t2t-green-lite); }
+        .brand-logo { font-size:1.6rem; font-weight:700; color:#fff; text-decoration:none; letter-spacing:.08em; text-align:center; }
+        .brand-logo span { color:var(--t2t-green-lite); font-style:italic; }
+        .nav-icons { display:flex; gap:1rem; align-items:center; }
+        .nav-btn { background:var(--t2t-green); color:#fff !important; border-radius:4px; padding:6px 16px !important; font-size:.72rem !important; font-family:'Oswald',sans-serif; letter-spacing:.1em !important; text-decoration:none; }
+        .nav-btn:hover { background:var(--t2t-green-lite) !important; color:#0f1f0f !important; }
+        .hamburger { display:none; background:none; border:none; cursor:pointer; }
+        .hamburger span { display:block; width:24px; height:2px; background:#fff; margin:5px 0; }
+        .mobile-menu { display:none; position:fixed; inset:0; background:var(--t2t-dark); z-index:2000; flex-direction:column; padding:2rem; }
+        .mobile-menu.open { display:flex; }
+        .mobile-menu a { color:#fff; text-decoration:none; font-family:'Oswald',sans-serif; font-size:2rem; padding:.8rem 0; border-bottom:1px solid var(--t2t-border); }
+        @media(max-width:991px){ .nav-links{display:none;} .hamburger{display:block;} }
+
+        .breadcrumb-bar { background:rgba(34,197,94,.05); border-bottom:1px solid rgba(34,197,94,.1); padding:.65rem 0; }
+        .breadcrumb-bar .bc { display:flex; gap:.5rem; align-items:center; font-size:.8rem; color:rgba(255,255,255,.4); }
+        .breadcrumb-bar .bc a { color:rgba(255,255,255,.55); text-decoration:none; }
+        .breadcrumb-bar .bc a:hover { color:var(--t2t-green-lite); }
+        .breadcrumb-bar .bc .sep { color:rgba(255,255,255,.2); }
+        .breadcrumb-bar .bc .current { color:var(--t2t-green-lite); font-weight:600; }
+
+        .page-hero {
+            padding:80px 0 60px;
+            background:linear-gradient(135deg,var(--t2t-dark) 0%,var(--t2t-dark3) 100%);
+            position:relative; overflow:hidden;
+        }
+        .page-hero::before {
+            content:'';
+            position:absolute; inset:0;
+            background-image:radial-gradient(circle,rgba(34,197,94,.25) 1px,transparent 1px);
+            background-size:50px 50px; opacity:.25;
+            animation:particleDrift 20s linear infinite;
+        }
+        @keyframes particleDrift { from{background-position:0 0;} to{background-position:0 50px;} }
+        .page-hero .badge-label { display:inline-block; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.3); color:var(--t2t-green-lite); font-size:.72rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; padding:.35em 1em; border-radius:20px; margin-bottom:1.25rem; }
+        .page-hero h1 { font-size:clamp(2.2rem,5vw,3.8rem); color:#fff; margin-bottom:.6rem; }
+        .page-hero p  { color:rgba(255,255,255,.6); font-size:1rem; max-width:560px; line-height:1.7; }
+
+        .content-area { padding:60px 0 80px; }
+
+        .card-box { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:10px; overflow:hidden; margin-bottom:1.5rem; }
+        .card-box-header { font-family:'Oswald',sans-serif; font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.7); padding:.9rem 1.25rem; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:.5rem; background:rgba(255,255,255,.02); }
+        .card-box-body { padding:1.25rem; }
+
+        .form-label { font-weight:600; font-size:.88rem; color:rgba(255,255,255,.75); }
+        .form-control, .form-select {
+            background:rgba(255,255,255,.06) !important; border:1.5px solid rgba(255,255,255,.12) !important;
+            border-radius:8px !important; color:#fff !important; font-size:.9rem !important;
+            padding:.65rem .9rem !important; transition:border-color .2s !important;
+        }
+        .form-control::placeholder { color:rgba(255,255,255,.3); }
+        .form-control:focus, .form-select:focus { border-color:var(--t2t-green) !important; box-shadow:0 0 0 3px rgba(34,197,94,.12) !important; background:rgba(255,255,255,.09) !important; }
+        .form-select option { background:#1e3420; color:#fff; }
+        textarea.form-control { resize:vertical; min-height:140px; }
+
+        .btn-submit { background:var(--t2t-green); color:#fff; border:none; border-radius:7px; padding:.7rem 2rem; font-weight:700; font-size:.93rem; font-family:'Oswald',sans-serif; letter-spacing:.08em; text-transform:uppercase; transition:all .2s; cursor:pointer; }
+        .btn-submit:hover { background:var(--t2t-green-lite); color:#0f1f0f; transform:translateY(-2px); box-shadow:0 4px 16px rgba(34,197,94,.35); }
+        .btn-reset  { background:transparent; color:rgba(255,255,255,.55); border:1.5px solid rgba(255,255,255,.18); border-radius:7px; padding:.7rem 1.5rem; font-size:.88rem; transition:all .2s; cursor:pointer; }
+        .btn-reset:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+
+        .form-check-input { background-color:rgba(255,255,255,.1) !important; border-color:rgba(255,255,255,.25) !important; }
+        .form-check-input:checked { background-color:var(--t2t-green) !important; border-color:var(--t2t-green) !important; }
+
+        .info-row { display:flex; align-items:flex-start; gap:.85rem; padding:.9rem 0; border-bottom:1px solid rgba(255,255,255,.06); }
+        .info-row:last-child { border-bottom:none; padding-bottom:0; }
+        .info-icon { width:40px; height:40px; flex-shrink:0; border-radius:50%; background:rgba(34,197,94,.1); display:flex; align-items:center; justify-content:center; color:var(--t2t-green); font-size:.95rem; }
+        .info-label { font-weight:700; font-size:.88rem; color:rgba(255,255,255,.8); margin-bottom:.15rem; }
+        .info-val   { font-size:.85rem; color:rgba(255,255,255,.5); line-height:1.55; }
+        .info-val a { color:var(--t2t-green-lite); text-decoration:none; }
+        .info-val a:hover { text-decoration:underline; }
+
+        .quick-link { display:flex; align-items:center; gap:.75rem; text-decoration:none; color:rgba(255,255,255,.65); font-size:.88rem; padding:.65rem .25rem; border-bottom:1px solid rgba(255,255,255,.05); transition:color .2s; }
+        .quick-link:last-child { border-bottom:none; padding-bottom:0; }
+        .quick-link:hover { color:var(--t2t-green-lite); }
+        .quick-link i { color:var(--t2t-green); width:16px; font-size:.9rem; }
+        .quick-link .ql-sub { font-size:.75rem; color:rgba(255,255,255,.32); display:block; margin-top:.1rem; }
+
+        .still-need { background:linear-gradient(135deg,var(--t2t-dark3),var(--t2t-dark)); border:1px solid rgba(34,197,94,.18); border-radius:10px; padding:1.5rem 1.25rem; text-align:center; }
+        .still-need .sn-icon { font-size:2rem; color:var(--t2t-green); margin-bottom:.75rem; display:block; }
+        .still-need h6 { font-family:'Oswald',sans-serif; font-size:1rem; color:#fff; margin-bottom:.4rem; }
+        .still-need p  { font-size:.82rem; color:rgba(255,255,255,.5); margin-bottom:1rem; }
+        .btn-green { background:var(--t2t-green); color:#fff; border:none; border-radius:5px; padding:.5rem 1.25rem; font-size:.85rem; font-weight:600; text-decoration:none; transition:all .2s; display:inline-block; }
+        .btn-green:hover { background:var(--t2t-green-lite); color:#0f1f0f; transform:translateY(-1px); }
+        .btn-outline-green { background:transparent; color:var(--t2t-green-lite); border:1.5px solid rgba(34,197,94,.4); border-radius:5px; padding:.5rem 1.25rem; font-size:.85rem; font-weight:600; text-decoration:none; transition:all .2s; display:inline-block; }
+        .btn-outline-green:hover { background:rgba(34,197,94,.1); color:var(--t2t-green-lite); }
+
+        .t2t-footer { background:#080f08; padding:60px 0 30px; border-top:1px solid var(--t2t-border); }
+        .footer-brand { font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:700; color:#fff; margin-bottom:1rem; }
+        .footer-brand em { color:var(--t2t-green-lite); font-style:italic; }
+        .footer-text { font-size:.83rem; color:rgba(255,255,255,.4); line-height:1.7; }
+        .footer-title { font-family:'Oswald',sans-serif; font-size:.75rem; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.5); margin-bottom:1.2rem; }
+        .footer-links { list-style:none; padding:0; }
+        .footer-links li { margin-bottom:.6rem; }
+        .footer-links a { color:rgba(255,255,255,.45); text-decoration:none; font-size:.85rem; transition:color .25s; }
+        .footer-links a:hover { color:var(--t2t-green-lite); }
+        .footer-bottom { margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,.08); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+        .footer-bottom p { font-size:.78rem; color:rgba(255,255,255,.28); margin:0; }
+
+        .flash-msg { padding:.85rem 1.25rem; border-radius:8px; margin-bottom:1.5rem; font-size:.9rem; font-weight:600; }
+        .flash-msg.success { background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.25); color:var(--t2t-green-lite); }
+        .flash-msg.error   { background:rgba(239,68,68,.1);  border:1px solid rgba(239,68,68,.25);  color:#fca5a5; }
+
+
+        .issue-type-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.8rem; margin-bottom:.5rem; }
+        .issue-type-card { padding:1rem .75rem; border-radius:10px; border:1.5px solid rgba(255,255,255,.1); text-align:center; cursor:pointer; transition:all .2s; background:rgba(255,255,255,.03); user-select:none; }
+        .issue-type-card:hover { border-color:rgba(34,197,94,.4); }
+        .issue-type-card.selected { border-color:var(--t2t-green); background:rgba(34,197,94,.08); box-shadow:0 4px 16px rgba(34,197,94,.15); }
+        .issue-type-card input[type="radio"] { display:none; }
+        .it-icon { width:42px; height:42px; border-radius:50%; margin:0 auto .6rem; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+        .it-label { font-weight:700; font-size:.8rem; color:rgba(255,255,255,.7); }
+
+        .priority-badges { display:flex; flex-wrap:wrap; gap:.6rem; }
+        .pbadge { display:inline-flex; align-items:center; gap:.3rem; padding:.35em .9em; border-radius:20px; font-size:.82rem; font-weight:700; cursor:pointer; border:1.5px solid transparent; transition:all .2s; user-select:none; }
+        .pbadge input[type="radio"] { display:none; }
+        .pbadge.low     { background:rgba(34,197,94,.08);  border-color:rgba(34,197,94,.25);   color:var(--t2t-green-lite); }
+        .pbadge.normal  { background:rgba(59,130,246,.08); border-color:rgba(59,130,246,.25);  color:#93c5fd; }
+        .pbadge.high    { background:rgba(249,115,22,.08); border-color:rgba(249,115,22,.25);  color:#fdba74; }
+        .pbadge.critical{ background:rgba(239,68,68,.08);  border-color:rgba(239,68,68,.25);   color:#fca5a5; }
+        .pbadge.selected-p { box-shadow:0 0 0 3px rgba(34,197,94,.3); }
+        .pbadge.high.selected-p    { box-shadow:0 0 0 3px rgba(249,115,22,.3); }
+        .pbadge.critical.selected-p{ box-shadow:0 0 0 3px rgba(239,68,68,.3); }
+
+        .upload-zone { border:2px dashed rgba(34,197,94,.25); border-radius:10px; padding:1.5rem; text-align:center; background:rgba(34,197,94,.03); cursor:pointer; transition:all .2s; }
+        .upload-zone:hover, .upload-zone.dragover { border-color:var(--t2t-green); background:rgba(34,197,94,.07); }
+        .upload-zone .uz-icon { font-size:2rem; color:rgba(34,197,94,.6); margin-bottom:.5rem; }
+        .upload-zone p { font-size:.85rem; color:rgba(255,255,255,.5); margin:0; }
+        .upload-zone small { font-size:.75rem; color:rgba(255,255,255,.3); }
+        .upload-zone .file-name { font-size:.82rem; color:var(--t2t-green-lite); margin-top:.5rem; display:none; }
+
+        .resp-row { display:flex; justify-content:space-between; align-items:center; padding:.6rem 0; border-bottom:1px solid rgba(255,255,255,.06); font-size:.87rem; }
+        .resp-row:last-child { border-bottom:none; }
+        .checklist li { display:flex; align-items:flex-start; gap:.6rem; margin-bottom:.7rem; color:rgba(255,255,255,.6); font-size:.87rem; }
+        .checklist li i { color:var(--t2t-green); margin-top:2px; flex-shrink:0; }
+        .char-count { font-size:.78rem; color:rgba(255,255,255,.3); text-align:right; margin-top:.2rem; }
+
+    </style>
+</head>
+<body>
+<!-- Announcement -->
+<div class="announcement-bar">
+    <span>&#127807;</span> RECYCLE &middot; EARN &middot; REDEEM <span>&#9851;</span> &mdash; TRASH TO TREASURE CAMPUS ECO PROGRAMME
+</div>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <span class="brand-logo">TRASH <span>2</span> TREASURE</span>
+        <button class="hamburger" onclick="document.getElementById('mobileMenu').classList.remove('open')">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('home') }}#features">Our System</a>
+    <a href="{{ url_for('home') }}#download">Download App</a>
+    <a href="{{ url_for('help_center') }}" class="">Help Center</a>
+    <a href="{{ url_for('contact_us') }}" class="">Contact Us</a>
+    <a href="{{ url_for('report_issue') }}" class="active">Report Issue</a>
+    <a href="{{ url_for('about') }}" class="">About</a>
+    <a href="{{ url_for('home') }}#login" style="color:var(--t2t-green-lite);margin-top:1rem;">Admin Login</a>
+</div>
+
+<!-- Navbar -->
+<nav class="main-nav">
+    <div class="nav-inner">
+        <ul class="nav-links">
+            <li><a href="{{ url_for('home') }}#features">Our System</a></li>
+            <li><a href="{{ url_for('home') }}#eco">Our Mission</a></li>
+            <li><a href="{{ url_for('home') }}#download">Download</a></li>
+        </ul>
+        <a href="{{ url_for('home') }}" class="brand-logo">TRASH <span>2</span> TREASURE</a>
+        <div class="nav-icons">
+            <ul class="nav-links" style="margin:0;">
+                <li><a href="{{ url_for('help_center') }}" class="">Help</a></li>
+                <li><a href="{{ url_for('contact_us') }}" class="">Contact</a></li>
+                <li><a href="{{ url_for('report_issue') }}" class="active">Report</a></li>
+                <li><a href="{{ url_for('about') }}" class="">About</a></li>
+            </ul>
+            <a href="{{ url_for('home') }}#login" class="nav-btn">ADMIN LOGIN</a>
+        </div>
+        <button class="hamburger" onclick="document.getElementById('mobileMenu').classList.add('open')">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+<!-- Breadcrumb -->
+<div class="breadcrumb-bar">
+    <div class="container">
+        <div class="bc">
+            <a href="{{ url_for('home') }}"><i class="fas fa-home"></i> Home</a>
+            <span class="sep">/</span>
+            <a href="{{ url_for('help_center') }}">Help Center</a>
+            <span class="sep">/</span>
+            <span class="current">Report Issue</span>
+        </div>
+    </div>
+</div>
+
+<!-- Hero -->
+<section class="page-hero">
+    <div class="container" style="position:relative;z-index:2;">
+        <span class="badge-label" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.1);color:#fca5a5;">Issue Tracker</span>
+        <h1>&#9888;&#65039; Report an Issue</h1>
+        <p>Help us fix problems fast. Submit a detailed report and our team will investigate and respond promptly.</p>
+    </div>
+</section>
+
+<!-- Content -->
+<section class="content-area">
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-msg {{ category }}">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>{{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row g-4">
+
+            <!-- Form -->
+            <div class="col-lg-8">
+                <div class="card-box">
+                    <div class="card-box-header"><i class="fas fa-file-alt" style="color:var(--t2t-green);"></i> Issue Report Form</div>
+                    <div class="card-box-body">
+                        <form method="POST" action="{{ url_for('report_issue') }}" enctype="multipart/form-data" id="reportForm">
+
+                            <!-- Issue Type -->
+                            <div class="mb-4">
+                                <label class="form-label mb-2">Issue Type *</label>
+                                <div class="issue-type-grid">
+                                    <label class="issue-type-card selected">
+                                        <input type="radio" name="issue_type" value="Machine Malfunction" checked>
+                                        <div class="it-icon" style="background:rgba(239,68,68,.12);">&#x1F527;</div>
+                                        <div class="it-label">Machine Malfunction</div>
+                                    </label>
+                                    <label class="issue-type-card">
+                                        <input type="radio" name="issue_type" value="App Bug">
+                                        <div class="it-icon" style="background:rgba(59,130,246,.12);">&#x1F4F1;</div>
+                                        <div class="it-label">App Bug</div>
+                                    </label>
+                                    <label class="issue-type-card">
+                                        <input type="radio" name="issue_type" value="Account Issue">
+                                        <div class="it-icon" style="background:rgba(168,85,247,.12);">&#x1F464;</div>
+                                        <div class="it-label">Account Issue</div>
+                                    </label>
+                                    <label class="issue-type-card">
+                                        <input type="radio" name="issue_type" value="Reward Problem">
+                                        <div class="it-icon" style="background:rgba(234,179,8,.12);">&#x1F381;</div>
+                                        <div class="it-label">Reward Problem</div>
+                                    </label>
+                                    <label class="issue-type-card">
+                                        <input type="radio" name="issue_type" value="Points Not Credited">
+                                        <div class="it-icon" style="background:rgba(34,197,94,.12);">&#x2B07;&#xFE0F;</div>
+                                        <div class="it-label">Points Not Credited</div>
+                                    </label>
+                                    <label class="issue-type-card">
+                                        <input type="radio" name="issue_type" value="Other">
+                                        <div class="it-icon" style="background:rgba(100,116,139,.12);">&#x2026;</div>
+                                        <div class="it-label">Other</div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Machine ID</label>
+                                    <input type="text" class="form-control" name="machine_id" placeholder="e.g. MCH-001 (if applicable)" maxlength="50">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-control" name="issue_location" placeholder="Building / area" maxlength="150">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Issue Title *</label>
+                                    <input type="text" class="form-control" name="issue_title" placeholder="Brief summary of the issue" required maxlength="200">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Description *</label>
+                                    <textarea class="form-control" name="issue_description" id="issueDesc" placeholder="Describe the issue in detail. Include what happened, when it happened, and any steps already tried&#x2026;" rows="6" required maxlength="3000"></textarea>
+                                    <div class="char-count"><span id="descCount">0</span> / 3000</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label d-block mb-2">Priority *</label>
+                                    <div class="priority-badges">
+                                        <label class="pbadge low selected-p"><input type="radio" name="priority" value="low" checked><i class="fas fa-arrow-down"></i> Low</label>
+                                        <label class="pbadge normal"><input type="radio" name="priority" value="normal"><i class="fas fa-minus"></i> Normal</label>
+                                        <label class="pbadge high"><input type="radio" name="priority" value="high"><i class="fas fa-arrow-up"></i> High</label>
+                                        <label class="pbadge critical"><input type="radio" name="priority" value="critical"><i class="fas fa-bolt"></i> Critical</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Screenshot / Evidence <span style="font-weight:400;color:rgba(255,255,255,.3);">(optional)</span></label>
+                                    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('screenshot').click()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="this.classList.remove('dragover')">
+                                        <div class="uz-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                                        <p><strong style="color:rgba(255,255,255,.75);">Click to upload</strong> or drag &amp; drop</p>
+                                        <small>PNG, JPG, GIF up to 5 MB</small>
+                                        <div class="file-name" id="fileName"></div>
+                                    </div>
+                                    <input type="file" id="screenshot" name="screenshot" class="d-none" accept="image/png,image/jpeg,image/gif,image/webp">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Your Name</label>
+                                    <input type="text" class="form-control" name="reporter_name" placeholder="Full name" maxlength="100">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Your Email</label>
+                                    <input type="email" class="form-control" name="reporter_email" placeholder="your@email.com" maxlength="150">
+                                </div>
+                                <div class="col-12 d-flex gap-3 pt-1">
+                                    <button type="submit" class="btn-submit" style="background:#dc3545;"><i class="fas fa-paper-plane me-2"></i>Submit Report</button>
+                                    <button type="reset" class="btn-reset" onclick="resetForm()">Clear</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div><!-- /.col-lg-8 -->
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card-box mb-4">
+                    <div class="card-box-header"><i class="fas fa-check-square" style="color:var(--t2t-green);"></i> What to Include</div>
+                    <div class="card-box-body">
+                        <ul class="checklist" style="list-style:none;padding:0;margin:0;">
+                            <li><i class="fas fa-check-circle"></i> Machine ID or location where the issue occurred</li>
+                            <li><i class="fas fa-check-circle"></i> Date and approximate time</li>
+                            <li><i class="fas fa-check-circle"></i> Steps taken before the problem occurred</li>
+                            <li><i class="fas fa-check-circle"></i> Any error messages or codes displayed</li>
+                            <li><i class="fas fa-check-circle"></i> Screenshots if available</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-box mb-4">
+                    <div class="card-box-header"><i class="fas fa-clock" style="color:var(--t2t-green);"></i> Response Times</div>
+                    <div class="card-box-body" style="padding:.75rem 1.25rem;">
+                        <div class="resp-row"><span style="color:#fca5a5;font-weight:700;">&#x26A1; Critical</span><span style="color:rgba(255,255,255,.5);">Within 2 hours</span></div>
+                        <div class="resp-row"><span style="color:#fdba74;font-weight:700;">&#x25B2; High</span><span style="color:rgba(255,255,255,.5);">4&#x2013;8 hours</span></div>
+                        <div class="resp-row"><span style="color:#93c5fd;font-weight:700;">&#x2500; Normal</span><span style="color:rgba(255,255,255,.5);">1&#x2013;2 business days</span></div>
+                        <div class="resp-row"><span style="color:var(--t2t-green-lite);font-weight:700;">&#x25BC; Low</span><span style="color:rgba(255,255,255,.5);">2&#x2013;5 business days</span></div>
+                    </div>
+                </div>
+                <div class="still-need">
+                    <span class="sn-icon"><i class="fas fa-life-ring"></i></span>
+                    <h6>Other Support</h6>
+                    <p>Browse FAQs or send a general message to the team.</p>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        <a href="{{ url_for('help_center') }}" class="btn-green">Help Center</a>
+                        <a href="{{ url_for('contact_us') }}" class="btn-outline-green">Contact Us</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="t2t-footer">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="footer-brand">TRASH <em>2</em> TREASURE</div>
+                <p class="footer-text">Smart, sustainable, rewarding. Our bottle recycling system turns everyday waste into eco-rewards for students across the campus.</p>
+            </div>
+            <div class="col-6 col-lg-2">
+                <p class="footer-title">System</p>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('home') }}#features">Features</a></li>
+                    <li><a href="{{ url_for('home') }}#eco">Our Mission</a></li>
+                    <li><a href="{{ url_for('home') }}#download">Download App</a></li>
+                    <li><a href="{{ url_for('home') }}#login">Admin Login</a></li>
+                </ul>
+            </div>
+            <div class="col-6 col-lg-2">
+                <p class="footer-title">Download</p>
+                <ul class="footer-links">
+                    <li><a href="#">Google Play</a></li>
+                    <li><a href="#">App Store</a></li>
+                    <li><a href="#">APK Direct</a></li>
+                </ul>
+            </div>
+            <div class="col-6 col-lg-2">
+                <p class="footer-title">Support</p>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+                    <li><a href="{{ url_for('contact_us') }}">Contact Us</a></li>
+                    <li><a href="{{ url_for('report_issue') }}">Report Issue</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Trash to Treasure. All rights reserved.</p>
+            <p>Made with &#127807; for a greener campus.</p>
+        </div>
+    </div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.querySelectorAll('.issue-type-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('.issue-type-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+    });
+});
+document.querySelectorAll('.pbadge').forEach(b => {
+    b.addEventListener('click', () => {
+        document.querySelectorAll('.pbadge').forEach(x => x.classList.remove('selected-p'));
+        b.classList.add('selected-p');
+        b.querySelector('input').checked = true;
+    });
+});
+const descEl = document.getElementById('issueDesc');
+const dcEl   = document.getElementById('descCount');
+descEl.addEventListener('input', () => {
+    const n = descEl.value.length;
+    dcEl.textContent = n;
+    dcEl.style.color = n > 2700 ? '#fca5a5' : 'rgba(255,255,255,.3)';
+});
+const fi = document.getElementById('screenshot');
+const fn = document.getElementById('fileName');
+const uz = document.getElementById('uploadZone');
+fi.addEventListener('change', () => {
+    if (fi.files.length && fi.files[0].size <= 5*1024*1024) {
+        fn.textContent = '&#128206; ' + fi.files[0].name;
+        fn.style.display = 'block';
+    } else if (fi.files.length) { alert('Max 5 MB.'); fi.value=''; }
+});
+function handleDragOver(e) { e.preventDefault(); uz.classList.add('dragover'); }
+function handleDrop(e) { e.preventDefault(); uz.classList.remove('dragover'); fi.files = e.dataTransfer.files; fi.dispatchEvent(new Event('change')); }
+function resetForm() {
+    document.querySelectorAll('.issue-type-card').forEach((c,i)=>c.classList.toggle('selected',i===0));
+    document.querySelectorAll('.pbadge').forEach((b,i)=>b.classList.toggle('selected-p',i===0));
+    fn.style.display='none'; dcEl.textContent='0';
+}
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    const t = document.querySelector('input[name="issue_type"]:checked');
+    const ti = this.issue_title.value.trim();
+    const d  = this.issue_description.value.trim();
+    if (!t||!ti||!d) { e.preventDefault(); alert('Please fill in all required fields.'); }
+});
+</script>
+</body>
+</html>

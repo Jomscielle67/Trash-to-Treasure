@@ -1,0 +1,1372 @@
+{% extends "base.html" %}
+
+{% block title %}User Management | Trash to Treasure{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">👥 User Management</h1>
+            <p class="text-muted mb-0">Manage student and admin accounts</p>
+        </div>
+        <div>
+            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i data-lucide="user-plus"></i>
+                Add Admin
+            </button>
+            <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
+                <i data-lucide="upload"></i>
+                Bulk Import
+            </button>
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i data-lucide="refresh-cw"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- User Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dcfce7; color: #166534;">
+                        👥
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.total_users or 0 }}</div>
+                <div class="metric-label">Total Users</div>
+                <div class="metric-change positive">
+                    <i data-lucide="users"></i>
+                    {{ stats.total_students or 0 }} students, {{ stats.total_admins or 0 }} admins
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dbeafe; color: #1e40af;">
+                        ✅
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.active_users or 0 }}</div>
+                <div class="metric-label">Active Users</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    {{ ((stats.active_users / stats.total_users * 100) | round(1)) if stats.total_users > 0 else 0 }}% of total
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fef3c7; color: #92400e;">
+                        ⏳
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.pending_users or 0 }}</div>
+                <div class="metric-label">Pending Approval</div>
+                <div class="metric-change negative">
+                    <i data-lucide="clock"></i>
+                    Need review
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fee2e2; color: #991b1b;">
+                        🚫
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.suspended_users or 0 }}</div>
+                <div class="metric-label">Suspended</div>
+                <div class="metric-change neutral">
+                    <i data-lucide="user-x"></i>
+                    Requires attention
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="filters-container">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="searchUsers">Search Users</label>
+                <input type="text" id="searchUsers" class="form-control" placeholder="Search by name, email, or ID...">
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterRole">Role</label>
+                <select id="filterRole" class="form-select">
+                    <option value="">All Roles</option>
+                    <option value="student">Student</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterDepartment">Department</label>
+                <select id="filterDepartment" class="form-select">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="banned">Banned</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                    <i data-lucide="filter-x"></i>
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="table-title">All Users ({{ pagination.total }})</h5>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary active" onclick="filterByStatus('all')">All</button>
+                <button class="btn btn-outline-primary" onclick="filterByStatus('student')">Students</button>
+                <button class="btn btn-outline-primary" onclick="filterByStatus('admin')">Admins</button>
+                <button class="btn btn-outline-primary" onclick="filterByStatus('active')">Active</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        </th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Bottles/Position</th>
+                        <th>Points/Access</th>
+                        <th>Status</th>
+                        <th>Last Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr data-role="{{ user.role }}" data-status="{{ user.status }}" data-department="{{ user.department }}">
+                        <td>
+                            <input type="checkbox" class="user-checkbox" value="{{ user.id }}">
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="profile-avatar me-2" style="width: 32px; height: 32px; font-size: 0.75rem;">
+                                    {{ user.name[0] if user.name else ('S' if user.role == 'student' else 'A') }}
+                                </div>
+                                <div>
+                                    <div class="fw-medium">{{ user.name or 'N/A' }}</div>
+                                    <small class="text-muted">
+                                        {% if user.role == 'student' %}
+                                            {{ user.student_id if user.student_id else user.id[:8] }}
+                                        {% else %}
+                                            {{ user.employee_id if user.employee_id else user.id[:8] }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ user.email or 'No email' }}</td>
+                        <td>
+                            {% if user.role == 'student' %}
+                            <span class="status-badge secondary">
+                                👨‍🎓 Student
+                            </span>
+                            {% else %}
+                            <span class="status-badge info">
+                                👔 Admin
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ user.department or 'No Department' }}</span>
+                        </td>
+                        <td>
+                            {% if user.role == 'student' %}
+                            <span class="fw-bold">{{ user.bottles or 0 }} 🍾</span>
+                            {% else %}
+                            <small class="text-muted">{{ user.position or 'Admin' }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.role == 'student' %}
+                            <span class="fw-bold text-success">{{ user.points or 0 }} pts</span>
+                            {% else %}
+                            <span class="badge bg-primary">Level {{ user.access_level or 1 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge {% if user.status == 'active' %}success{% elif user.status == 'pending' %}warning{% elif user.status == 'suspended' or user.status == 'inactive' %}danger{% else %}secondary{% endif %}">
+                                {% if user.status == 'active' %}✅ Active
+                                {% elif user.status == 'pending' %}⏳ Pending
+                                {% elif user.status == 'suspended' %}🚫 Suspended
+                                {% elif user.status == 'inactive' %}⭕ Inactive
+                                {% elif user.status == 'banned' %}❌ Banned
+                                {% else %}{{ user.status }}{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {% if user.last_login %}
+                                    {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" title="View Details" onclick="viewUser('{{ user.id }}', '{{ user.role }}')">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                                <button class="btn btn-outline-success" title="Edit User" onclick="editUser('{{ user.id }}', '{{ user.role }}')">
+                                    <i data-lucide="edit"></i>
+                                </button>
+                                {% if user.status == 'pending' %}
+                                <button class="btn btn-outline-info" title="Approve User" onclick="approveUser('{{ user.id }}', '{{ user.role }}')">
+                                    <i data-lucide="check"></i>
+                                </button>
+                                {% endif %}
+                                {% if user.status == 'active' %}
+                                <button class="btn btn-outline-warning" title="Suspend User" onclick="suspendUser('{{ user.id }}', '{{ user.role }}')">
+                                    <i data-lucide="user-x"></i>
+                                </button>
+                                {% elif user.status == 'suspended' or user.status == 'inactive' %}
+                                <button class="btn btn-outline-success" title="Reactivate User" onclick="reactivateUser('{{ user.id }}', '{{ user.role }}')">
+                                    <i data-lucide="user-check"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-outline-secondary" title="Reset Password" onclick="resetPassword('{{ user.id }}', '{{ user.role }}')">
+                                    <i data-lucide="key"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-5">
+                            <i data-lucide="users"></i>
+                            <p class="mt-2">No users found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }} to {{ [pagination.page * pagination.per_page, pagination.total]|min }} of {{ pagination.total }} users
+                </div>
+                <nav aria-label="Users pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ pagination.prev_page }}" {% if not pagination.has_prev %}tabindex="-1"{% endif %}>Previous</a>
+                        </li>
+                        {% for page_num in pagination.pages %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                        </li>
+                        {% endfor %}
+                        {% if pagination.total_pages > 5 %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">...</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ pagination.total_pages }}">{{ pagination.total_pages }}</a>
+                        </li>
+                        {% endif %}
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ pagination.next_page }}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Admin Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i data-lucide="user-plus"></i>
+                    Add New Admin Account
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAdminForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="adminName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="adminName" name="name" required placeholder="Enter admin full name">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="adminEmail" class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="adminEmail" name="email" required placeholder="admin@university.edu">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="adminEmployeeId" class="form-label">Employee ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="adminEmployeeId" name="employee_id" required placeholder="EMP-12345">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="adminDepartment" class="form-label">Department <span class="text-danger">*</span></label>
+                            <select class="form-select" id="adminDepartment" name="department" required>
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="adminPosition" class="form-label">Position</label>
+                            <input type="text" class="form-control" id="adminPosition" name="position" placeholder="e.g., Department Head, Coordinator">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="adminRole" class="form-label">Admin Role <span class="text-danger">*</span></label>
+                            <select class="form-select" id="adminRole" name="role" required>
+                                <option value="admin">Admin</option>
+                                <option value="department_admin">Department Admin</option>
+                                <option value="super_admin">Super Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="adminAccessLevel" class="form-label">Access Level <span class="text-danger">*</span></label>
+                            <select class="form-select" id="adminAccessLevel" name="access_level" required>
+                                <option value="1">Level 1 - Department Only</option>
+                                <option value="2">Level 2 - Multiple Departments</option>
+                                <option value="3">Level 3 - Full System Access</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="adminPhone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="adminPhone" name="phone_number" placeholder="+63 912 345 6789">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="adminOfficeLocation" class="form-label">Office Location</label>
+                            <input type="text" class="form-control" id="adminOfficeLocation" name="office_location" placeholder="Building A, Room 101">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="adminOfficeHours" class="form-label">Office Hours</label>
+                            <input type="text" class="form-control" id="adminOfficeHours" name="office_hours" placeholder="Mon-Fri 8:00 AM - 5:00 PM">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="adminPassword" class="form-label">Temporary Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="adminPassword" name="password" required placeholder="Enter temporary password">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                <i data-lucide="eye" id="togglePasswordIcon"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Admin will be required to change password on first login</small>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i data-lucide="info"></i>
+                        <strong>Note:</strong> The admin account will be created with "active" status. An email notification will be sent to the admin with login credentials.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddAdmin()">
+                    <i data-lucide="user-plus"></i>
+                    Create Admin Account
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View User Details Modal -->
+<div class="modal fade" id="viewUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i data-lucide="eye"></i>
+                    User Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Full Name:</strong>
+                        <p id="viewUserName" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Email:</strong>
+                        <p id="viewUserEmail" class="mb-0"></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>ID Number:</strong>
+                        <p id="viewUserId" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Department:</strong>
+                        <p id="viewUserDepartment" class="mb-0"></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Role:</strong>
+                        <p id="viewUserRole" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Status:</strong>
+                        <p id="viewUserStatus" class="mb-0"></p>
+                    </div>
+                </div>
+                <div id="studentDetails" style="display: none;">
+                    <hr>
+                    <h6 class="text-primary">Student Information</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Bottles Collected:</strong>
+                            <p id="viewUserBottles" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Points Balance:</strong>
+                            <p id="viewUserPoints" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                <div id="adminDetails" style="display: none;">
+                    <hr>
+                    <h6 class="text-primary">Admin Information</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Position:</strong>
+                            <p id="viewUserPosition" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Access Level:</strong>
+                            <p id="viewUserAccessLevel" class="mb-0"></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Phone:</strong>
+                            <p id="viewUserPhone" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Office Location:</strong>
+                            <p id="viewUserOffice" class="mb-0"></p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Office Hours:</strong>
+                        <p id="viewUserOfficeHours" class="mb-0"></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Total Logins:</strong>
+                        <p id="viewUserLogins" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Last Login:</strong>
+                        <p id="viewUserLastLogin" class="mb-0"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i data-lucide="edit"></i>
+                    Edit User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    <input type="hidden" id="editUserRole">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editUserName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editUserName" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editUserEmail" class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="editUserEmail" name="email" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editUserDepartment" class="form-label">Department <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editUserDepartment" name="department" required>
+                                <option value="">Select Department</option>
+                                <option value="Accountancy, Business and Management">Accountancy, Business and Management</option>
+                                <option value="College of Computer Studies">College of Computer Studies</option>
+                                <option value="College of Hospitality Management and Tourism">College of Hospitality Management and Tourism</option>
+                                <option value="College of Teacher Education">College of Teacher Education</option>
+                                <option value="College of Engineering">College of Engineering</option>
+                                <option value="Senior High School">Senior High School</option>
+                                <option value="Food safety and security">Food safety and security</option>
+                                <option value="College of Fisheries">College of Fisheries</option>
+                                <option value="College of Industrial Technology">College of Industrial Technology</option>
+                                <option value="College of Agriculture">College of Agriculture</option>
+                                <option value="College of Nursing">College of Nursing</option>
+                                <option value="Business Affairs Office">Business Affairs Office</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editUserStatus" class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editUserStatus" name="status" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="suspended">Suspended</option>
+                                <option value="pending">Pending</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="editAdminFields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editUserPosition" class="form-label">Position</label>
+                                <input type="text" class="form-control" id="editUserPosition" name="position">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editUserPhone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="editUserPhone" name="phone_number">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editUserOfficeLocation" class="form-label">Office Location</label>
+                                <input type="text" class="form-control" id="editUserOfficeLocation" name="office_location">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editUserOfficeHours" class="form-label">Office Hours</label>
+                                <input type="text" class="form-control" id="editUserOfficeHours" name="office_hours">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitEditUser()">
+                    <i data-lucide="save"></i>
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Suspend User Modal -->
+<div class="modal fade" id="suspendUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i data-lucide="alert-triangle"></i>
+                    Suspend User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="suspendUserId">
+                <input type="hidden" id="suspendUserRole">
+                <p>Are you sure you want to suspend <strong id="suspendUserName"></strong>?</p>
+                <p class="text-muted">The user will lose access to the system and will need to be reactivated by an administrator.</p>
+                
+                <div class="mb-3">
+                    <label for="suspendReason" class="form-label">Reason for Suspension (Optional)</label>
+                    <textarea class="form-control" id="suspendReason" rows="3" placeholder="Enter reason..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="confirmSuspendUser()">
+                    <i data-lucide="user-x"></i>
+                    Suspend User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reactivate User Modal -->
+<div class="modal fade" id="reactivateUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i data-lucide="user-check"></i>
+                    Reactivate User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reactivateUserId">
+                <input type="hidden" id="reactivateUserRole">
+                <p>Are you sure you want to reactivate <strong id="reactivateUserName"></strong>?</p>
+                <p class="text-muted">The user will regain access to the system.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="confirmReactivateUser()">
+                    <i data-lucide="check"></i>
+                    Reactivate User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i data-lucide="key"></i>
+                    Reset Password
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="resetPasswordUserId">
+                <input type="hidden" id="resetPasswordUserRole">
+                <p>Reset password for <strong id="resetPasswordUserName"></strong>?</p>
+                
+                <div class="mb-3">
+                    <label for="newPassword" class="form-label">New Temporary Password <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="newPassword" required placeholder="Enter new password">
+                        <button class="btn btn-outline-secondary" type="button" onclick="toggleNewPassword()">
+                            <i data-lucide="eye" id="toggleNewPasswordIcon"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">User will be required to change password on next login</small>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="sendEmailNotification" checked>
+                    <label class="form-check-label" for="sendEmailNotification">
+                        Send email notification to user
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmResetPassword()">
+                    <i data-lucide="key"></i>
+                    Reset Password
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Bulk Import Modal -->
+<div class="modal fade" id="bulkImportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i data-lucide="upload"></i>
+                    Bulk Import Students
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Instructions -->
+                <div class="alert alert-info d-flex align-items-start gap-2">
+                    <i data-lucide="info" style="min-width:18px;margin-top:2px"></i>
+                    <div>
+                        <strong>How to use:</strong> Upload a CSV file with columns:
+                        <code>full_name, email, student_id, department, status</code>.<br>
+                        <a href="/api/users/import-template" class="alert-link">Download CSV template</a>
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Select CSV File <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" id="importFile" accept=".csv">
+                    <div class="form-text">Only .csv files are accepted. Max 500 rows per import.</div>
+                </div>
+
+                <!-- Progress -->
+                <div id="importProgress" style="display:none;">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span>Importing students&hellip;</span>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="importResults" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="submitBulkImport()">
+                    <i data-lucide="upload"></i>
+                    Import Students
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    document.getElementById('searchUsers').addEventListener('input', function() {
+        applyFilters();
+    });
+
+    // Filter functionality
+    function applyFilters() {
+        const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+        const roleFilter = document.getElementById('filterRole').value;
+        const departmentFilter = document.getElementById('filterDepartment').value;
+        const statusFilter = document.getElementById('filterStatus').value;
+        const rows = document.querySelectorAll('tbody tr[data-role]');
+        
+        rows.forEach(row => {
+            let show = true;
+            const text = row.textContent.toLowerCase();
+            const role = row.getAttribute('data-role');
+            const department = row.getAttribute('data-department');
+            const status = row.getAttribute('data-status');
+            
+            // Search filter
+            if (searchTerm && !text.includes(searchTerm)) {
+                show = false;
+            }
+            
+            // Role filter
+            if (roleFilter && role !== roleFilter) {
+                show = false;
+            }
+            
+            // Department filter
+            if (departmentFilter && department !== departmentFilter) {
+                show = false;
+            }
+            
+            // Status filter
+            if (statusFilter && status !== statusFilter) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+        updateSelectedCount();
+    }
+
+    // Attach filter event listeners
+    document.getElementById('filterRole').addEventListener('change', applyFilters);
+    document.getElementById('filterDepartment').addEventListener('change', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+
+    // Checkbox change listener
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('user-checkbox')) {
+            updateSelectedCount();
+        }
+    });
+    
+    // Initialize Lucide icons
+    setTimeout(() => {
+        lucide.createIcons();
+    }, 100);
+});
+
+function clearFilters() {
+    document.getElementById('searchUsers').value = '';
+    document.getElementById('filterRole').value = '';
+    document.getElementById('filterDepartment').value = '';
+    document.getElementById('filterStatus').value = '';
+    
+    document.querySelectorAll('tbody tr').forEach(row => {
+        row.style.display = '';
+    });
+    updateSelectedCount();
+}
+
+function filterByStatus(filter) {
+    // Update active button
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const rows = document.querySelectorAll('tbody tr[data-role]');
+    
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        const role = row.getAttribute('data-role');
+        
+        if (filter === 'all') {
+            row.style.display = '';
+        } else if (filter === 'student') {
+            row.style.display = role === 'student' ? '' : 'none';
+        } else if (filter === 'admin') {
+            row.style.display = role === 'admin' ? '' : 'none';
+        } else {
+            row.style.display = status === filter ? '' : 'none';
+        }
+    });
+    updateSelectedCount();
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    const visibleCheckboxes = Array.from(checkboxes).filter(cb => 
+        cb.closest('tr').style.display !== 'none'
+    );
+    
+    visibleCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+    const visibleCheckboxes = Array.from(checkboxes).filter(cb => 
+        cb.closest('tr').style.display !== 'none'
+    );
+    const count = visibleCheckboxes.length;
+    
+    const bulkActions = document.getElementById('bulkActions');
+    if (bulkActions) {
+        bulkActions.style.display = count > 0 ? 'block' : 'none';
+    }
+}
+
+// User action functions (updated to handle both students and admins)
+async function viewUser(userId, role) {
+    try {
+        const response = await fetch(`/api/users/get/${userId}?role=${role}`);
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            const user = result.user;
+            
+            // Populate common fields
+            document.getElementById('viewUserName').textContent = user.name || 'N/A';
+            document.getElementById('viewUserEmail').textContent = user.email || 'N/A';
+            document.getElementById('viewUserId').textContent = user.id_number || 'N/A';
+            document.getElementById('viewUserDepartment').textContent = user.department || 'N/A';
+            document.getElementById('viewUserRole').textContent = role === 'student' ? 'Student' : 'Admin';
+            document.getElementById('viewUserStatus').textContent = (user.status || 'Unknown').toUpperCase();
+            document.getElementById('viewUserLogins').textContent = user.total_logins || 0;
+            document.getElementById('viewUserLastLogin').textContent = user.last_login || 'Never';
+            
+            // Show/hide role-specific sections
+            if (role === 'student') {
+                document.getElementById('studentDetails').style.display = 'block';
+                document.getElementById('adminDetails').style.display = 'none';
+                document.getElementById('viewUserBottles').textContent = user.bottles || 0;
+                document.getElementById('viewUserPoints').textContent = user.points || 0;
+            } else {
+                document.getElementById('studentDetails').style.display = 'none';
+                document.getElementById('adminDetails').style.display = 'block';
+                document.getElementById('viewUserPosition').textContent = user.position || 'N/A';
+                document.getElementById('viewUserAccessLevel').textContent = `Level ${user.access_level || 1}`;
+                document.getElementById('viewUserPhone').textContent = user.phone_number || 'N/A';
+                document.getElementById('viewUserOffice').textContent = user.office_location || 'N/A';
+                document.getElementById('viewUserOfficeHours').textContent = user.office_hours || 'N/A';
+            }
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('viewUserModal'));
+            modal.show();
+            
+            // Reinitialize icons
+            setTimeout(() => lucide.createIcons(), 100);
+        } else {
+            showToast('✗ Failed to load user details', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('✗ Network error', 'error');
+    }
+}
+
+async function editUser(userId, role) {
+    try {
+        const response = await fetch(`/api/users/get/${userId}?role=${role}`);
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            const user = result.user;
+            
+            // Populate form fields
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editUserRole').value = role;
+            document.getElementById('editUserName').value = user.name || '';
+            document.getElementById('editUserEmail').value = user.email || '';
+            document.getElementById('editUserDepartment').value = user.department || '';
+            document.getElementById('editUserStatus').value = user.status || 'active';
+            
+            // Show/hide admin-specific fields
+            if (role === 'admin') {
+                document.getElementById('editAdminFields').style.display = 'block';
+                document.getElementById('editUserPosition').value = user.position || '';
+                document.getElementById('editUserPhone').value = user.phone_number || '';
+                document.getElementById('editUserOfficeLocation').value = user.office_location || '';
+                document.getElementById('editUserOfficeHours').value = user.office_hours || '';
+            } else {
+                document.getElementById('editAdminFields').style.display = 'none';
+            }
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+            
+            // Reinitialize icons
+            setTimeout(() => lucide.createIcons(), 100);
+        } else {
+            showToast('✗ Failed to load user details', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('✗ Network error', 'error');
+    }
+}
+
+async function submitEditUser() {
+    const form = document.getElementById('editUserForm');
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const userId = document.getElementById('editUserId').value;
+    const role = document.getElementById('editUserRole').value;
+    
+    const formData = new FormData(form);
+    const data = {};
+    formData.forEach((value, key) => {
+        data[key] = value;
+    });
+    
+    try {
+        const response = await fetch(`/api/users/edit/${userId}?role=${role}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showToast('✓ User updated successfully!', 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+            modal.hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('✗ ' + (result.message || 'Failed to update user'), 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('✗ Network error', 'error');
+    }
+}
+
+function approveUser(userId, role) {
+    if (confirm(`Approve this ${role}? They will gain access to the system.`)) {
+        updateUserStatus(userId, role, 'active', 'User approved successfully');
+    }
+}
+
+function suspendUser(userId, role) {
+    // Get user name from table
+    const row = document.querySelector(`tr input[value="${userId}"]`).closest('tr');
+    const userName = row.querySelector('.fw-medium').textContent;
+    
+    document.getElementById('suspendUserId').value = userId;
+    document.getElementById('suspendUserRole').value = role;
+    document.getElementById('suspendUserName').textContent = userName;
+    document.getElementById('suspendReason').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('suspendUserModal'));
+    modal.show();
+}
+
+async function confirmSuspendUser() {
+    const userId = document.getElementById('suspendUserId').value;
+    const role = document.getElementById('suspendUserRole').value;
+    const reason = document.getElementById('suspendReason').value;
+    
+    await updateUserStatus(userId, role, 'suspended', 'User suspended successfully', reason);
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('suspendUserModal'));
+    modal.hide();
+}
+
+function reactivateUser(userId, role) {
+    // Get user name from table
+    const row = document.querySelector(`tr input[value="${userId}"]`).closest('tr');
+    const userName = row.querySelector('.fw-medium').textContent;
+    
+    document.getElementById('reactivateUserId').value = userId;
+    document.getElementById('reactivateUserRole').value = role;
+    document.getElementById('reactivateUserName').textContent = userName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('reactivateUserModal'));
+    modal.show();
+}
+
+async function confirmReactivateUser() {
+    const userId = document.getElementById('reactivateUserId').value;
+    const role = document.getElementById('reactivateUserRole').value;
+    
+    await updateUserStatus(userId, role, 'active', 'User reactivated successfully');
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('reactivateUserModal'));
+    modal.hide();
+}
+
+async function updateUserStatus(userId, role, status, successMessage, reason = '') {
+    try {
+        const response = await fetch(`/api/users/update-status/${userId}?role=${role}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ status, reason })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showToast('✓ ' + successMessage, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('✗ ' + (result.message || 'Failed to update status'), 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('✗ Network error', 'error');
+    }
+}
+
+function resetPassword(userId, role) {
+    // Get user name from table
+    const row = document.querySelector(`tr input[value="${userId}"]`).closest('tr');
+    const userName = row.querySelector('.fw-medium').textContent;
+    
+    document.getElementById('resetPasswordUserId').value = userId;
+    document.getElementById('resetPasswordUserRole').value = role;
+    document.getElementById('resetPasswordUserName').textContent = userName;
+    document.getElementById('newPassword').value = '';
+    document.getElementById('sendEmailNotification').checked = true;
+    
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+    
+    setTimeout(() => lucide.createIcons(), 100);
+}
+
+function toggleNewPassword() {
+    const passwordInput = document.getElementById('newPassword');
+    const icon = document.getElementById('toggleNewPasswordIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+        passwordInput.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+    }
+    lucide.createIcons();
+}
+
+async function confirmResetPassword() {
+    const userId = document.getElementById('resetPasswordUserId').value;
+    const role = document.getElementById('resetPasswordUserRole').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const sendEmail = document.getElementById('sendEmailNotification').checked;
+    
+    if (!newPassword) {
+        showToast('✗ Please enter a new password', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/reset-password/${userId}?role=${role}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ password: newPassword, send_email: sendEmail })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showToast('✓ Password reset successfully!', 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
+            modal.hide();
+        } else {
+            showToast('✗ ' + (result.message || 'Failed to reset password'), 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('✗ Network error', 'error');
+    }
+}
+
+function bulkImport() {
+    // Reset modal state
+    document.getElementById('importFile').value = '';
+    document.getElementById('importProgress').style.display = 'none';
+    document.getElementById('importResults').style.display = 'none';
+    const modal = new bootstrap.Modal(document.getElementById('bulkImportModal'));
+    modal.show();
+    setTimeout(() => lucide.createIcons(), 100);
+}
+
+async function submitBulkImport() {
+    const fileInput = document.getElementById('importFile');
+    if (!fileInput.files || !fileInput.files[0]) {
+        showToast('✗ Please select a CSV file first', 'error');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        showToast('✗ Only CSV files are supported', 'error');
+        return;
+    }
+
+    const progressEl = document.getElementById('importProgress');
+    const resultsEl  = document.getElementById('importResults');
+    progressEl.style.display = 'block';
+    resultsEl.style.display  = 'none';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/users/bulk-import', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        progressEl.style.display = 'none';
+        resultsEl.style.display  = 'block';
+
+        if (result.success) {
+            let html = `<div class="alert alert-success">
+                <strong>Import Complete!</strong> ${result.message}
+                <ul class="mb-0 mt-1">
+                    <li>Imported: <strong>${result.imported}</strong></li>
+                    <li>Skipped: <strong>${result.skipped}</strong></li>
+                </ul>
+            </div>`;
+            if (result.errors && result.errors.length > 0) {
+                html += `<div class="alert alert-warning">
+                    <strong>Warnings:</strong>
+                    <ul class="mb-0 mt-1">`;
+                result.errors.forEach(e => { html += `<li><small>${e}</small></li>`; });
+                html += '</ul></div>';
+            }
+            resultsEl.innerHTML = html;
+            if (result.imported > 0) {
+                showToast(`✓ ${result.imported} student(s) imported`, 'success');
+                setTimeout(() => location.reload(), 2500);
+            }
+        } else {
+            resultsEl.innerHTML = `<div class="alert alert-danger"><strong>Import Failed:</strong> ${result.message}</div>`;
+            showToast('✗ Import failed: ' + result.message, 'error');
+        }
+    } catch (error) {
+        progressEl.style.display = 'none';
+        resultsEl.style.display  = 'block';
+        resultsEl.innerHTML = '<div class="alert alert-danger">Network error during import. Please try again.</div>';
+        showToast('✗ Network error', 'error');
+    }
+}
+
+// Toggle password visibility
+function togglePassword() {
+    const passwordInput = document.getElementById('adminPassword');
+    const icon = document.getElementById('togglePasswordIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+        passwordInput.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+    }
+    lucide.createIcons();
+}
+
+// Submit add admin form
+async function submitAddAdmin() {
+    const form = document.getElementById('addAdminForm');
+    
+    // Validate form
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Get form data
+    const formData = new FormData(form);
+    const data = {};
+    formData.forEach((value, key) => {
+        data[key] = value;
+    });
+    
+    // Convert access_level to integer
+    data.access_level = parseInt(data.access_level);
+    
+    try {
+        console.log('Submitting admin data:', data);
+        
+        const response = await fetch('/api/users/add-admin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        console.log('Server response:', result);
+        
+        if (response.ok && result.success) {
+            // Success
+            showToast('✓ Admin account created successfully!', 'success');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
+            modal.hide();
+            
+            // Reset form
+            form.reset();
+            
+            // Reload page after short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            // Error
+            showToast('✗ ' + (result.message || 'Failed to create admin account'), 'error');
+        }
+    } catch (error) {
+        console.error('Error creating admin:', error);
+        showToast('✗ Network error. Please try again.', 'error');
+    }
+}
+
+// Toast notification system (reusing from departments.js pattern)
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Determine toast color
+    let bgColor = 'bg-info';
+    if (type === 'success') bgColor = 'bg-success';
+    else if (type === 'error') bgColor = 'bg-danger';
+    else if (type === 'warning') bgColor = 'bg-warning';
+    
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toastHTML = `
+        <div id="${toastId}" class="toast ${bgColor} text-white" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: type === 'error' ? 5000 : 3000
+    });
+    toast.show();
+    
+    // Remove toast after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+</script>
+{% endblock %}

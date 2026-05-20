@@ -1,0 +1,40 @@
+[Unit]
+Description=T2T Bridge – Real-Time Firebase Bridge (QR + Bottle Sensor)
+# Start after networking is up (needed for Firebase)
+After=network-online.target
+Wants=network-online.target
+# If the service crashes, systemd will try to restart it
+# Limit: max 5 restarts within 2 minutes before giving up
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+# ------------------------------------------------------------
+# These values are filled in by setup_autostart.sh
+# You can also edit them manually if needed.
+# ------------------------------------------------------------
+Type=simple
+User=__USER__
+WorkingDirectory=__SCRIPT_DIR__
+ExecStart=__PYTHON__ __SCRIPT_DIR__/bridge.py
+
+# Restart only on failure (not on clean Ctrl+C exit)
+Restart=on-failure
+RestartSec=10
+
+# Give USB serial devices time to fully enumerate after boot
+# bridge.py auto-detects ports by USB chip ID (CH340 / FTDI)
+ExecStartPre=/bin/sleep 10
+
+# Timeout: if bridge takes >30s to start, kill and retry
+TimeoutStartSec=30
+
+# Unbuffered output so logs appear immediately in journalctl
+Environment=PYTHONUNBUFFERED=1
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=t2t-bridge
+
+[Install]
+WantedBy=multi-user.target

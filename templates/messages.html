@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}Messages | Trash to Treasure{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Priority badges ── */
+    .badge-priority-low    { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+    .badge-priority-normal { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-priority-high   { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+    .badge-priority-urgent { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    /* ── Status badges ── */
+    .badge-status-new      { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    .badge-status-read     { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+    .badge-status-replied  { background: #ede9fe; color: #7c3aed; border: 1px solid #ddd6fe; }
+    .badge-status-archived { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+
+    /* ── Message row ── */
+    .msg-row {
+        background: #ffffff;
+        border: 1px solid var(--border-color, #d1e7d1);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: .65rem;
+        transition: border-color .2s, box-shadow .2s, transform .15s;
+        cursor: pointer;
+    }
+    .msg-row:hover {
+        border-color: #22c55e;
+        box-shadow: 0 4px 14px rgba(34,197,94,.12);
+        transform: translateY(-1px);
+    }
+    .msg-row.is-new {
+        border-left: 4px solid #22c55e;
+        background: #f0fdf4;
+    }
+    .msg-row .msg-subject {
+        font-weight: 700;
+        font-size: .93rem;
+        color: var(--text-primary, #1a2e1a);
+    }
+    .msg-row .msg-preview {
+        font-size: .82rem;
+        color: var(--text-secondary, #4b6b4b);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 520px;
+    }
+    .msg-row .msg-meta {
+        font-size: .78rem;
+        color: #94a3b8;
+        line-height: 1.5;
+    }
+    .msg-row .msg-sender {
+        font-size: .88rem;
+        color: var(--text-primary, #1a2e1a);
+        font-weight: 700;
+    }
+    .msg-row .msg-email {
+        font-size: .78rem;
+        color: var(--text-secondary, #4b6b4b);
+    }
+
+    /* ── Filter pills ── */
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .35rem .9rem;
+        border-radius: 20px;
+        font-size: .78rem;
+        font-weight: 700;
+        border: 1.5px solid var(--border-color, #d1e7d1);
+        color: var(--text-secondary, #4b6b4b);
+        text-decoration: none;
+        transition: all .2s;
+        background: #fff;
+    }
+    .filter-pill:hover {
+        border-color: #22c55e;
+        color: #16a34a;
+        background: #f0fdf4;
+    }
+    .filter-pill.active {
+        background: #22c55e;
+        border-color: #22c55e;
+        color: #fff;
+    }
+    .filter-pill .pill-count {
+        font-size: .72rem;
+        opacity: .8;
+    }
+    .filter-sep {
+        color: #d1e7d1;
+        margin: 0 .25rem;
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+
+    /* ── Detail modal ── */
+    #msgModal .modal-content {
+        background: #ffffff;
+        border: 1px solid var(--border-color, #d1e7d1);
+        border-radius: 14px;
+        color: var(--text-primary, #1a2e1a);
+        box-shadow: 0 20px 60px rgba(15,31,15,.15);
+    }
+    #msgModal .modal-header {
+        background: #f0fdf4;
+        border-bottom: 1px solid #d1fae5;
+        border-radius: 14px 14px 0 0;
+        padding: 1rem 1.5rem;
+    }
+    #msgModal .modal-title { font-weight: 700; color: #1a2e1a; }
+    #msgModal .modal-footer {
+        border-top: 1px solid var(--border-color, #d1e7d1);
+        background: #f9fafb;
+        border-radius: 0 0 14px 14px;
+    }
+    #msgModal .msg-body-text {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        font-size: .9rem;
+        color: #1a2e1a;
+        white-space: pre-wrap;
+        line-height: 1.75;
+        min-height: 100px;
+    }
+    #msgModal .detail-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: .2rem;
+    }
+    #msgModal .detail-val {
+        font-size: .9rem;
+        color: #1a2e1a;
+    }
+    #msgModal .detail-email {
+        font-size: .82rem;
+        color: #4b6b4b;
+    }
+
+    /* ── Empty state ── */
+    .empty-inbox {
+        text-align: center;
+        padding: 80px 20px;
+        color: #94a3b8;
+    }
+    .empty-inbox .ei-icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; }
+    .empty-inbox p { font-size:.95rem; color: #64748b; }
+
+    /* ── Stat cards override for color accents ── */
+    .stat-unread .metric-value { color: #16a34a !important; }
+    .stat-replied .metric-value { color: #7c3aed !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">📬 Contact Messages</h1>
+            <p class="text-muted mb-0">Messages sent via the Contact Us page</p>
+        </div>
+        <button class="btn btn-outline-primary" onclick="location.reload()">
+            <i data-lucide="refresh-cw"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row mb-4 g-3">
+        <div class="col-6 col-lg-2">
+            <div class="metric-card">
+                <div class="metric-value">{{ stats.total }}</div>
+                <div class="metric-label">Total</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2 stat-unread">
+            <div class="metric-card">
+                <div class="metric-value">{{ stats.new }}</div>
+                <div class="metric-label">Unread</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="metric-card">
+                <div class="metric-value">{{ stats.read }}</div>
+                <div class="metric-label">Read</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2 stat-replied">
+            <div class="metric-card">
+                <div class="metric-value">{{ stats.replied }}</div>
+                <div class="metric-label">Replied</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="metric-card">
+                <div class="metric-value">{{ stats.archived }}</div>
+                <div class="metric-label">Archived</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <a href="{{ url_for('admin_messages', priority=priority_filter) }}"
+           class="filter-pill {% if status_filter == 'all' %}active{% endif %}">
+            All <span class="pill-count">{{ stats.total }}</span>
+        </a>
+        <a href="{{ url_for('admin_messages', status='new', priority=priority_filter) }}"
+           class="filter-pill {% if status_filter == 'new' %}active{% endif %}">
+            🟢 Unread <span class="pill-count">{{ stats.new }}</span>
+        </a>
+        <a href="{{ url_for('admin_messages', status='read', priority=priority_filter) }}"
+           class="filter-pill {% if status_filter == 'read' %}active{% endif %}">
+            Read <span class="pill-count">{{ stats.read }}</span>
+        </a>
+        <a href="{{ url_for('admin_messages', status='replied', priority=priority_filter) }}"
+           class="filter-pill {% if status_filter == 'replied' %}active{% endif %}">
+            Replied <span class="pill-count">{{ stats.replied }}</span>
+        </a>
+        <a href="{{ url_for('admin_messages', status='archived', priority=priority_filter) }}"
+           class="filter-pill {% if status_filter == 'archived' %}active{% endif %}">
+            Archived <span class="pill-count">{{ stats.archived }}</span>
+        </a>
+
+        <span class="filter-sep">|</span>
+
+        <a href="{{ url_for('admin_messages', status=status_filter) }}"
+           class="filter-pill {% if priority_filter == 'all' %}active{% endif %}">
+            All Priority
+        </a>
+        <a href="{{ url_for('admin_messages', status=status_filter, priority='urgent') }}"
+           class="filter-pill {% if priority_filter == 'urgent' %}active{% endif %}">
+            🔴 Urgent
+        </a>
+        <a href="{{ url_for('admin_messages', status=status_filter, priority='high') }}"
+           class="filter-pill {% if priority_filter == 'high' %}active{% endif %}">
+            🟡 High
+        </a>
+        <a href="{{ url_for('admin_messages', status=status_filter, priority='normal') }}"
+           class="filter-pill {% if priority_filter == 'normal' %}active{% endif %}">
+            🔵 Normal
+        </a>
+        <a href="{{ url_for('admin_messages', status=status_filter, priority='low') }}"
+           class="filter-pill {% if priority_filter == 'low' %}active{% endif %}">
+            Low
+        </a>
+    </div>
+
+    <!-- Message List -->
+    {% if messages %}
+        {% for msg in messages %}
+        <div class="msg-row {% if msg.status == 'new' %}is-new{% endif %}"
+             data-id="{{ msg.id }}"
+             data-name="{{ msg.name | default('') | e }}"
+             data-email="{{ msg.email | default('') | e }}"
+             data-dept="{{ msg.department | default('') | e }}"
+             data-subject="{{ msg.subject | default('') | e }}"
+             data-message="{{ msg.message | default('') | e }}"
+             data-priority="{{ msg.priority | default('low') }}"
+             data-status="{{ msg.status | default('new') }}"
+             data-date="{{ msg.created_at_dt | default('') }}"
+             onclick="openMsg(this)">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div style="flex:1;min-width:0;">
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span class="msg-sender">{{ msg.name or '(No Name)' }}</span>
+                        <span class="msg-email">{{ msg.email or '' }}</span>
+                        <span class="badge rounded-pill badge-priority-{{ msg.priority or 'low' }}">
+                            {{ (msg.priority or 'low') | capitalize }}
+                        </span>
+                        <span class="badge rounded-pill badge-status-{{ msg.status or 'new' }}">
+                            {{ (msg.status or 'new') | capitalize }}
+                        </span>
+                    </div>
+                    <div class="msg-subject mb-1">{{ msg.subject or '(No Subject)' }}</div>
+                    <div class="msg-preview">{{ msg.message or '' }}</div>
+                </div>
+                <div class="text-end" style="flex-shrink:0;">
+                    <div class="msg-meta">
+                        {{ msg.created_at_dt or '—' }}
+                    </div>
+                    {% if msg.department %}
+                        <span class="badge mt-1"
+                              style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;font-size:.72rem;">
+                            {{ msg.department }}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-inbox">
+            <span class="ei-icon">📭</span>
+            <p>No messages found for this filter.</p>
+            {% if status_filter != 'all' or priority_filter != 'all' %}
+                <a href="{{ url_for('admin_messages') }}" class="btn btn-sm btn-outline-secondary mt-2">Clear filters</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- Message Detail Modal -->
+<div class="modal fade" id="msgModal" tabindex="-1" aria-labelledby="msgModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="msgModalLabel">📩 Message Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="detail-label">From</div>
+                        <div class="detail-val fw-bold" id="dName">—</div>
+                        <div class="detail-email" id="dEmail">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="detail-label">Department</div>
+                        <div class="detail-val" id="dDept">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="detail-label">Received</div>
+                        <div class="detail-val" id="dDate">—</div>
+                    </div>
+                </div>
+                <hr style="border-color:#e2e8f0;">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="detail-label">Subject</div>
+                        <div class="detail-val fw-bold" id="dSubject">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="detail-label">Priority</div>
+                        <div class="detail-val" id="dPriority">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-val" id="dStatus">—</div>
+                    </div>
+                </div>
+                <div class="detail-label mb-2">Message</div>
+                <div class="msg-body-text" id="dMessage">—</div>
+            </div>
+            <div class="modal-footer d-flex gap-2 flex-wrap justify-content-between">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="setStatus('read')">
+                        <i data-lucide="eye" style="width:14px;height:14px;"></i> Mark Read
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="setStatus('replied')">
+                        <i data-lucide="reply" style="width:14px;height:14px;"></i> Mark Replied
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="setStatus('archived')">
+                        <i data-lucide="archive" style="width:14px;height:14px;"></i> Archive
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMsg()">
+                        <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete
+                    </button>
+                </div>
+                <a id="dReplyLink" href="#" class="btn btn-sm btn-success" target="_blank">
+                    <i data-lucide="mail" style="width:14px;height:14px;"></i> Reply via Email
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentMsgId = null;
+
+function openMsg(el) {
+    const d = el.dataset;
+    currentMsgId = d.id;
+
+    document.getElementById('dName').textContent    = d.name    || '—';
+    document.getElementById('dEmail').textContent   = d.email   || '—';
+    document.getElementById('dDept').textContent    = d.dept    || '—';
+    document.getElementById('dSubject').textContent = d.subject || '—';
+    document.getElementById('dMessage').textContent = d.message || '—';
+    document.getElementById('dDate').textContent    = d.date    || '—';
+
+    // Priority badge
+    const p = d.priority || 'low';
+    document.getElementById('dPriority').innerHTML =
+        `<span class="badge badge-priority-${p} rounded-pill">${p.charAt(0).toUpperCase()+p.slice(1)}</span>`;
+
+    // Status badge
+    const s = d.status || 'new';
+    document.getElementById('dStatus').innerHTML =
+        `<span class="badge badge-status-${s} rounded-pill">${s.charAt(0).toUpperCase()+s.slice(1)}</span>`;
+
+    // Reply link — include subject + quoted original message in body
+    const subj = encodeURIComponent('Re: ' + (d.subject || ''));
+    const bodyText = [
+        'Hi ' + (d.name || '') + ',',
+        '',
+        'Thank you for reaching out. [Your reply here]',
+        '',
+        '---',
+        'Original message received on ' + (d.date || ''),
+        'From: ' + (d.name || '') + ' <' + (d.email || '') + '>',
+        'Subject: ' + (d.subject || ''),
+        '',
+        d.message || ''
+    ].join('\n');
+    document.getElementById('dReplyLink').href =
+        `mailto:${d.email || ''}?subject=${subj}&body=${encodeURIComponent(bodyText)}`;
+
+    // Auto-mark as read if it's new
+    if (d.status === 'new') {
+        updateStatus(d.id, 'read');
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('msgModal'));
+    modal.show();
+}
+
+function setStatus(status) {
+    if (!currentMsgId) return;
+    updateStatus(currentMsgId, status, true);
+}
+
+function updateStatus(id, status, reload) {
+    const fd = new FormData();
+    fd.append('status', status);
+    fetch(`/admin/messages/${id}/update`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && reload) {
+                bootstrap.Modal.getInstance(document.getElementById('msgModal'))?.hide();
+                location.reload();
+            }
+        })
+        .catch(console.error);
+}
+
+function deleteMsg() {
+    if (!currentMsgId) return;
+    if (!confirm('Delete this message? This cannot be undone.')) return;
+    fetch(`/admin/messages/${currentMsgId}/delete`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('msgModal'))?.hide();
+                location.reload();
+            }
+        })
+        .catch(console.error);
+}
+</script>
+{% endblock %}

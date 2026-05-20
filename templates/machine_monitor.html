@@ -1,0 +1,1212 @@
+{% extends "base.html" %}
+
+{% block title %}Machine Monitor | Trash to Treasure{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">⚙️ Machine Monitor</h1>
+            <p class="text-muted mb-0">Monitor vending machines in real time</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-warning position-relative" onclick="showTasksPanel()" id="tasksBtn">
+                <i data-lucide="bell"></i>
+                Tasks
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="tasksBadge">0</span>
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMachineModal">
+                <i data-lucide="plus"></i>
+                Add Machine
+            </button>
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i data-lucide="refresh-cw"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Machine Status Overview -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dcfce7; color: #166534;">
+                        ✅
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.online_machines }}</div>
+                <div class="metric-label">Machines Online</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    Currently active
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fef3c7; color: #92400e;">
+                        📦
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.full_machines }}</div>
+                <div class="metric-label">Machines Full</div>
+                <div class="metric-change {% if stats.full_machines > 0 %}negative{% else %}positive{% endif %}">
+                    <i data-lucide="{% if stats.full_machines > 0 %}alert-triangle{% else %}check-circle{% endif %}"></i>
+                    {% if stats.full_machines > 0 %}Need emptying{% else %}All clear{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dbeafe; color: #1e40af;">
+                        🧴
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.bottles_today }}</div>
+                <div class="metric-label">Bottles Today</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    Today's deposits
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #f0fdf4; color: #15803d;">
+                        ♻️
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.total_bottles }}</div>
+                <div class="metric-label">Total Bottles Collected</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    All time
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Machine Cards Layout -->
+    <div class="row mb-4">
+        {% if not machines %}
+        <div class="col-12">
+            <div class="alert alert-info">No machines found. Add a machine to get started.</div>
+        </div>
+        {% endif %}
+        {% for machine in machines %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="table-container machine-detail-card">
+                <div class="machine-header {% if machine.status == 'active' %}border-success{% elif machine.status == 'full' %}border-warning{% else %}border-danger{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1"><strong>{{ machine.name }}</strong></h6>
+                            <p class="text-muted mb-1">{{ machine.location }}</p>
+                            <small class="text-muted">ID: {{ machine.id }}</small>
+                        </div>
+                        <div class="machine-status-indicator">
+                            <span class="status-dot {% if machine.status == 'online' %}online{% elif machine.status == 'full' %}full{% else %}offline{% endif %}"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="status-badge-container mb-3">
+                        <span class="status-badge {% if machine.status == 'active' %}success{% elif machine.status == 'full' %}warning{% else %}danger{% endif %}">
+                            {% if machine.status == 'active' %}🟢 Active
+                            {% elif machine.status == 'full' %}🟡 Full
+                            {% else %}🔴 Offline{% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="machine-body">
+                    <!-- Capacity Bar -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small><strong>Capacity</strong></small>
+                            <small>{{ machine.capacity }}%</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar {% if machine.capacity >= 90 %}bg-danger{% elif machine.capacity >= 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                 style="width: {{ machine.capacity }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ machine.bottles_today }}</div>
+                                <div class="stat-label">Today</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ machine.bottles_total }}</div>
+                                <div class="stat-label">All Time</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Maintenance Info -->
+                    <div class="maintenance-info mb-3">
+                        <div class="small text-muted">
+                            <div><strong>Last Maintenance:</strong> {{ machine.last_maintenance }}</div>
+                            <div><strong>Admin:</strong> {{ machine.assigned_admin_name or 'Unassigned' }}</div>
+                            {% if machine.notes %}<div><strong>Notes:</strong> {{ machine.notes }}</div>{% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="machine-actions">
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-sm btn-outline-primary" title="View Details" onclick="viewMachineDetails('{{ machine.doc_id }}')">
+                                <i data-lucide="eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" title="Reset Machine" onclick="resetMachine('{{ machine.doc_id }}', '{{ machine.name }}')"
+                                    {% if machine.status == 'active' %}disabled{% endif %}>
+                                <i data-lucide="rotate-ccw"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" title="Assign Admin" onclick="openAssignAdmin('{{ machine.doc_id }}', '{{ machine.name }}', '{{ machine.assigned_admin_id }}')">
+                                <i data-lucide="user-plus"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" title="View Chart" onclick="viewMachineDetails('{{ machine.doc_id }}')">
+                                <i data-lucide="bar-chart-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Actions Panel -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Quick Actions</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <button class="btn btn-warning w-100" onclick="emptyAllFull()">
+                                <i data-lucide="trash-2"></i>
+                                Empty All Full Machines
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <button class="btn btn-danger w-100" onclick="checkOffline()">
+                                <i data-lucide="alert-triangle"></i>
+                                Check Offline Machines
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <button class="btn btn-info w-100" onclick="openScheduleModal()">
+                                <i data-lucide="calendar"></i>
+                                Schedule Maintenance
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <button class="btn btn-success w-100" onclick="generateReport()">
+                                <i data-lucide="file-text"></i>
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Machine Performance Chart -->
+    <div class="row">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Machine Performance Overview</h5>
+                    <div class="btn-group btn-group-sm" id="chartToggleBtns">
+                        <button class="btn btn-outline-primary active" onclick="updateChart('bottles', this)">Bottles Today</button>
+                        <button class="btn btn-outline-primary" onclick="updateChart('capacity', this)">Capacity</button>
+                        <button class="btn btn-outline-primary" onclick="updateChart('total', this)">All Time</button>
+                    </div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="chart-container">
+                        <canvas id="machineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Machine Modal -->
+<div class="modal fade" id="addMachineModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Machine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addMachineAlert" class="alert d-none"></div>
+                <form id="addMachineForm">
+                    <div class="mb-3">
+                        <label for="machineName" class="form-label">Machine Name</label>
+                        <input type="text" class="form-control" id="machineName" placeholder="e.g. T2T Machine 01" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="machineLocation" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="machineLocation" placeholder="e.g. Engineering Building" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="machineCapacity" class="form-label">Max Capacity (bottles)</label>
+                        <input type="number" class="form-control" id="machineCapacity" min="1" value="100" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="assignedAdmin" class="form-label">Assigned Admin (Teacher)</label>
+                        <select class="form-select" id="assignedAdmin">
+                            <option value="">— None / Unassigned —</option>
+                            {% for admin in admins %}
+                            <option value="{{ admin.id }}" data-name="{{ admin.name }}">{{ admin.name }}{% if admin.department %} · {{ admin.department }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="machineNotes" class="form-label">Notes <small class="text-muted">(optional)</small></label>
+                        <textarea class="form-control" id="machineNotes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="addMachineBtn" onclick="submitAddMachine()">
+                    <span id="addMachineBtnText">Add Machine</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Admin Modal -->
+<div class="modal fade" id="assignAdminModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i data-lucide="user-plus" class="me-2"></i>Assign Admin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignMachineDocId">
+                <p class="text-muted mb-3">Machine: <strong id="assignMachineName"></strong></p>
+                <label for="assignAdminSelect" class="form-label">Select Admin (Teacher)</label>
+                <select class="form-select" id="assignAdminSelect">
+                    <option value="">— Unassigned —</option>
+                    {% for admin in admins %}
+                    <option value="{{ admin.id }}" data-name="{{ admin.name }}">{{ admin.name }}{% if admin.department %} · {{ admin.department }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+                <div id="assignAdminAlert" class="alert d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="assignAdminBtn" onclick="submitAssignAdmin()">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Machine Details Modal -->
+<div class="modal fade" id="machineDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalTitle">Machine Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+                <div class="text-center py-4" id="detailLoadingSpinner">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Loading machine details…</p>
+                </div>
+                <div id="detailContent" class="d-none">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small mb-2">Basic Information</h6>
+                            <table class="table table-borderless table-sm">
+                                <tr><td><strong>Machine ID:</strong></td><td id="detailId"></td></tr>
+                                <tr><td><strong>Name:</strong></td><td id="detailName"></td></tr>
+                                <tr><td><strong>Location:</strong></td><td id="detailLocation"></td></tr>
+                                <tr><td><strong>Status:</strong></td><td id="detailStatus"></td></tr>
+                                <tr><td><strong>Fill Level:</strong></td><td id="detailCapacity"></td></tr>
+                                <tr><td><strong>Bottles / Capacity:</strong></td><td id="detailBottlesCap"></td></tr>
+                                <tr><td><strong>Notes:</strong></td><td id="detailNotes"></td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small mb-2">Maintenance & Stats</h6>
+                            <table class="table table-borderless table-sm">
+                                <tr><td><strong>Total Collected:</strong></td><td id="detailTotalCollections"></td></tr>
+                                <tr><td><strong>Last Maintenance:</strong></td><td id="detailLastMaintenance"></td></tr>
+                                <tr><td><strong>Days Since Maint.:</strong></td><td id="detailDaysSince"></td></tr>
+                                <tr><td><strong>Maint. Schedule:</strong></td><td id="detailSchedule"></td></tr>
+                                <tr><td><strong>Last Online:</strong></td><td id="detailLastOnline"></td></tr>
+                                <tr><td><strong>Assigned Admin:</strong></td><td id="detailAdmin"></td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Per-machine line chart -->
+                    <h6 class="text-muted text-uppercase small mb-2">Activity — Last 30 Days</h6>
+                    <div style="position:relative; height:220px;" class="mb-4">
+                        <canvas id="detailLineChart"></canvas>
+                        <div id="detailChartEmpty" class="d-none text-center text-muted py-4">No activity data available for this period.</div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="text-muted text-uppercase small mb-2">Recent Maintenance Logs</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                    <th>Performed By</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailLogsBody">
+                            </tbody>
+                        </table>
+                        <p id="detailNoLogs" class="text-muted small d-none">No maintenance logs found.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <input type="hidden" id="detailDocId">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="detailCollectBtn" onclick="requestEmptyMachine()">
+                    <i data-lucide="send"></i> Request Empty
+                </button>
+                <button type="button" class="btn btn-danger" id="detailResetBtn" onclick="resetFromModal()">
+                    <i data-lucide="rotate-ccw"></i> Reset to Active
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Maintenance Modal -->
+<div class="modal fade" id="scheduleMaintModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i data-lucide="calendar" class="me-2"></i>Schedule Maintenance / Empty Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="schedAlert" class="alert d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label">Machine</label>
+                    <select class="form-select" id="schedMachineSelect">
+                        <option value="">Select machine…</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Task Type</label>
+                    <select class="form-select" id="schedType">
+                        <option value="schedule_maintenance">🔧 Routine Maintenance</option>
+                        <option value="empty_machine">🗑️ Empty / Collect Bottles</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" id="schedPriority">
+                        <option value="normal">Normal</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Message <small class="text-muted">(optional)</small></label>
+                    <textarea class="form-control" id="schedMessage" rows="2" placeholder="Additional instructions for the admin…"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info" id="schedSubmitBtn" onclick="submitScheduleMaintenance()">
+                    <i data-lucide="send"></i> Send Task to Admin
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tasks Panel Modal -->
+<div class="modal fade" id="tasksModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="bell" style="width:18px;height:18px;"></i>
+                    <h5 class="modal-title mb-0">Task Notifications</h5>
+                    <span class="badge bg-warning text-dark" id="tasksModalPendingBadge" style="display:none;"></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Custom tab bar -->
+                <div class="d-flex border-bottom" id="tasksTabs" style="background:#f8f9fa;">
+                    <button id="tabPendingBtn"
+                        onclick="showTasksTab('pending', this)"
+                        style="flex:1;padding:14px 0;border:none;background:transparent;font-weight:700;font-size:.93rem;color:#dc3545;border-bottom:3px solid #dc3545;">
+                        &#128276; Pending
+                        <span id="pendingTabCount" class="badge bg-danger ms-1" style="font-size:.72rem;"></span>
+                    </button>
+                    <button id="tabDoneBtn"
+                        onclick="showTasksTab('done', this)"
+                        style="flex:1;padding:14px 0;border:none;background:transparent;font-weight:600;font-size:.93rem;color:#6c757d;border-bottom:3px solid transparent;">
+                        &#9989; Completed
+                    </button>
+                </div>
+                <div style="max-height:62vh;overflow-y:auto;padding:1rem;">
+                    <div id="tasksLoading" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div><p class="mt-2 text-muted small">Loading…</p></div>
+                    <div id="pendingTasksList"></div>
+                    <div id="doneTasksList" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadNotifications().then(renderTasksPanel)">
+                    <i data-lucide="refresh-cw"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.machine-detail-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.machine-detail-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.machine-header {
+    padding: 1.5rem 1.5rem 0;
+    border-left: 4px solid;
+}
+
+.machine-body {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.machine-status-indicator {
+    position: relative;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.maintenance-info {
+    background-color: #f8fafc;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.machine-actions .btn {
+    border-radius: 0;
+}
+
+.machine-actions .btn:first-child {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.machine-actions .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+.status-badge-container {
+    display: flex;
+    justify-content: center;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const machinesData = {{ machines|tojson|safe }};
+const adminsData = {{ admins|tojson|safe }};
+let machineChart;
+let detailLineChart = null;
+
+// ─── Overview bar chart ───────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const labels = machinesData.map(m => m.name);
+    const capacityData = machinesData.map(m => m.capacity);
+
+    function barColors(values, threshHigh, threshMid) {
+        return values.map(v => v >= threshHigh ? '#ef4444' : v >= threshMid ? '#f59e0b' : v > 0 ? '#10b981' : '#6b7280');
+    }
+
+    const ctx = document.getElementById('machineChart').getContext('2d');
+    machineChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Bottles Collected Today',
+                data: machinesData.map(m => m.bottles_today),
+                backgroundColor: barColors(capacityData, 90, 70)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    lucide.createIcons();
+    loadNotifications();
+    setInterval(loadNotifications, 15000); // poll every 15s for completions
+});
+
+function updateChart(type, btn) {
+    document.querySelectorAll('#chartToggleBtns .btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const labels = machinesData.map(m => m.name);
+    let data, label, colors;
+    switch (type) {
+        case 'bottles':
+            data = machinesData.map(m => m.bottles_today);
+            label = 'Bottles Collected Today';
+            colors = data.map(v => v > 0 ? '#10b981' : '#6b7280');
+            break;
+        case 'capacity':
+            data = machinesData.map(m => m.capacity);
+            label = 'Current Fill (%)';
+            colors = data.map(v => v >= 90 ? '#ef4444' : v >= 70 ? '#f59e0b' : v > 0 ? '#10b981' : '#6b7280');
+            break;
+        case 'total':
+            data = machinesData.map(m => m.bottles_total);
+            label = 'Total Bottles (All Time)';
+            colors = data.map(() => '#3b82f6');
+            break;
+    }
+    machineChart.data.labels = labels;
+    machineChart.data.datasets[0].data = data;
+    machineChart.data.datasets[0].label = label;
+    machineChart.data.datasets[0].backgroundColor = colors;
+    machineChart.update();
+}
+
+// ─── Add Machine ──────────────────────────────────────────────
+function submitAddMachine() {
+    const name = document.getElementById('machineName').value.trim();
+    const location = document.getElementById('machineLocation').value.trim();
+    const capacity = parseInt(document.getElementById('machineCapacity').value);
+    const adminSel = document.getElementById('assignedAdmin');
+    const adminId = adminSel.value;
+    const adminName = adminId ? adminSel.options[adminSel.selectedIndex].dataset.name : '';
+    const notes = document.getElementById('machineNotes').value.trim();
+    const alertEl = document.getElementById('addMachineAlert');
+    const btn = document.getElementById('addMachineBtn');
+
+    if (!name || !location || !capacity) {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Please fill in Machine Name, Location, and Capacity.';
+        return;
+    }
+
+    btn.disabled = true;
+    document.getElementById('addMachineBtnText').textContent = 'Saving…';
+
+    fetch('/api/machine/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, location, capacity, assigned_admin_id: adminId, assigned_admin_name: adminName, notes })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = `Machine "${name}" added (ID: ${data.machine_id}).`;
+            document.getElementById('addMachineForm').reset();
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = data.error || 'Failed to add machine.';
+            btn.disabled = false;
+            document.getElementById('addMachineBtnText').textContent = 'Add Machine';
+        }
+    })
+    .catch(() => {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Network error. Please try again.';
+        btn.disabled = false;
+        document.getElementById('addMachineBtnText').textContent = 'Add Machine';
+    });
+}
+
+// ─── Assign Admin ─────────────────────────────────────────────
+function openAssignAdmin(docId, machineName, currentAdminId) {
+    document.getElementById('assignMachineDocId').value = docId;
+    document.getElementById('assignMachineName').textContent = machineName;
+    const sel = document.getElementById('assignAdminSelect');
+    sel.value = currentAdminId || '';
+    document.getElementById('assignAdminAlert').className = 'alert d-none';
+    new bootstrap.Modal(document.getElementById('assignAdminModal')).show();
+}
+
+function submitAssignAdmin() {
+    const docId = document.getElementById('assignMachineDocId').value;
+    const sel = document.getElementById('assignAdminSelect');
+    const adminId = sel.value;
+    const adminName = adminId ? sel.options[sel.selectedIndex].dataset.name : '';
+    const alertEl = document.getElementById('assignAdminAlert');
+    const btn = document.getElementById('assignAdminBtn');
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    fetch(`/api/machine/${docId}/assign_admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: adminId, admin_name: adminName })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = adminName ? `${adminName} assigned successfully.` : 'Admin removed.';
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = data.error || 'Failed to assign admin.';
+            btn.disabled = false;
+            btn.textContent = 'Assign';
+        }
+    })
+    .catch(() => {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Network error.';
+        btn.disabled = false;
+        btn.textContent = 'Assign';
+    });
+}
+
+// ─── View Machine Details (fetches real data + chart) ────────
+function viewMachineDetails(docId) {
+    // Show modal with spinner
+    const spinner = document.getElementById('detailLoadingSpinner');
+    const content = document.getElementById('detailContent');
+    spinner.classList.remove('d-none');
+    content.classList.add('d-none');
+    document.getElementById('detailDocId').value = docId;
+    document.getElementById('detailModalTitle').textContent = 'Machine Details';
+    const modal = new bootstrap.Modal(document.getElementById('machineDetailsModal'));
+    modal.show();
+
+    // Fetch details and chart data in parallel
+    Promise.all([
+        fetch(`/api/machine/${docId}/details`).then(r => r.json()),
+        fetch(`/api/machine/${docId}/chart_data`).then(r => r.json())
+    ]).then(([detailRes, chartRes]) => {
+        if (!detailRes.success) throw new Error(detailRes.error || 'Failed to load');
+
+        const m = detailRes.machine;
+        document.getElementById('detailModalTitle').textContent = m.name || m.id;
+        document.getElementById('detailId').textContent = m.id || '-';
+        document.getElementById('detailName').textContent = m.name || '-';
+        document.getElementById('detailLocation').textContent = m.location || '-';
+        document.getElementById('detailStatus').innerHTML = statusBadge(m.status);
+        document.getElementById('detailCapacity').textContent = m.capacity + '%';
+        document.getElementById('detailBottlesCap').textContent = `${m.current_bottles} / ${m.max_capacity}`;
+        document.getElementById('detailNotes').textContent = m.notes || '—';
+        document.getElementById('detailTotalCollections').textContent = (m.bottles_collected || 0).toLocaleString();
+        document.getElementById('detailLastMaintenance').textContent = m.last_maintenance || 'Never';
+        document.getElementById('detailDaysSince').textContent = m.days_since_maintenance >= 999 ? 'Never maintained' : m.days_since_maintenance + ' days';
+        document.getElementById('detailSchedule').textContent = `Every ${m.maintenance_schedule} days`;
+        document.getElementById('detailLastOnline').textContent = m.last_online || 'Unknown';
+        document.getElementById('detailAdmin').textContent = m.assigned_admin_name || 'Unassigned';
+
+        // Populate maintenance logs
+        const tbody = document.getElementById('detailLogsBody');
+        const noLogs = document.getElementById('detailNoLogs');
+        tbody.innerHTML = '';
+        if (detailRes.logs && detailRes.logs.length > 0) {
+            noLogs.classList.add('d-none');
+            detailRes.logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${log.date}</td><td>${log.action}</td><td>${log.details}</td><td>${log.performed_by}</td>`;
+                tbody.appendChild(tr);
+            });
+        } else {
+            noLogs.classList.remove('d-none');
+        }
+
+        // Reset/collect buttons state
+        document.getElementById('detailResetBtn').disabled = (m.status === 'active');
+        document.getElementById('detailCollectBtn').disabled = (m.current_bottles === 0);
+
+        // Build line chart
+        if (detailLineChart) { detailLineChart.destroy(); detailLineChart = null; }
+        const canvas = document.getElementById('detailLineChart');
+        const chartEmptyEl = document.getElementById('detailChartEmpty');
+
+        const hasCollection = chartRes.success && chartRes.has_collection_data;
+        const hasDeposits   = chartRes.success && chartRes.has_deposit_data;
+        const hasAnyData    = hasCollection || hasDeposits;
+
+        chartEmptyEl.classList.toggle('d-none', hasAnyData);
+        canvas.style.display = hasAnyData ? 'block' : 'none';
+
+        if (hasAnyData) {
+            const datasets = [];
+            if (hasDeposits) {
+                datasets.push({
+                    label: 'Student Deposits (Site-wide)',
+                    data: chartRes.deposit_data,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.10)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#10b981',
+                    yAxisID: 'y'
+                });
+            }
+            if (hasCollection) {
+                datasets.push({
+                    label: 'Bottles Collected (This Machine)',
+                    data: chartRes.data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.10)',
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3b82f6',
+                    yAxisID: 'y'
+                });
+            }
+            detailLineChart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels: chartRes.labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: datasets.length > 1, position: 'top', labels: { boxWidth: 12 } },
+                        tooltip: { callbacks: { title: items => items[0].label } }
+                    },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 10, maxRotation: 30 } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        spinner.classList.add('d-none');
+        content.classList.remove('d-none');
+        lucide.createIcons();
+    }).catch(err => {
+        spinner.innerHTML = `<div class="alert alert-danger">Error loading details: ${err.message}</div>`;
+    });
+}
+
+function statusBadge(status) {
+    const map = { active: ['success', '🟢 Active'], full: ['warning', '🟡 Full'],
+                  offline: ['danger', '🔴 Offline'], maintenance: ['info', '🔧 Maintenance'], error: ['danger', '⚠️ Error'] };
+    const [cls, text] = map[status] || ['secondary', status];
+    return `<span class="badge bg-${cls}">${text}</span>`;
+}
+
+// ─── Reset from details modal ────────────────────────────────
+function resetFromModal() {
+    const docId = document.getElementById('detailDocId').value;
+    if (!docId || !confirm('Reset this machine to Active status?')) return;
+    fetch(`/api/machine/${docId}/reset`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showToast('Machine reset to Active.', 'success'); setTimeout(() => location.reload(), 1000); }
+            else showToast(d.error || 'Reset failed.', 'danger');
+        });
+}
+
+// ─── Collect from details modal (direct, fallback) ──────────
+function collectFromModal() {
+    const docId = document.getElementById('detailDocId').value;
+    if (!docId || !confirm('Mark this machine as emptied directly?')) return;
+    fetch(`/api/machine/${docId}/collect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showToast(`Collected ${d.bottles_collected} bottles. Machine reset.`, 'success'); setTimeout(() => location.reload(), 1200); }
+        else showToast(d.error || 'Collect failed.', 'danger');
+    });
+}
+
+// ─── Request Empty (sends task to assigned admin) ────────────
+async function requestEmptyMachine() {
+    const docId = document.getElementById('detailDocId').value;
+    const machineName = document.getElementById('detailName').textContent;
+    const adminName = document.getElementById('detailAdmin').textContent;
+    if (!docId) return;
+
+    if (adminName === 'Unassigned') {
+        if (!confirm(`No admin assigned to "${machineName}". Empty it directly instead?`)) return;
+        collectFromModal();
+        return;
+    }
+
+    if (!confirm(`Send empty-machine task to ${adminName} for "${machineName}"?`)) return;
+    try {
+        const res = await fetch(`/api/machine/${docId}/notify_admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'empty_machine', priority: 'normal' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Task sent to ${adminName}. They will empty the machine.`, 'success');
+            await loadNotifications();
+            bootstrap.Modal.getInstance(document.getElementById('machineDetailsModal'))?.hide();
+        } else {
+            showToast(data.error || 'Failed to send task.', 'danger');
+        }
+    } catch(e) { showToast('Network error.', 'danger'); }
+}
+
+// ─── Reset machine from card ─────────────────────────────────
+function resetMachine(docId, name) {
+    if (!confirm(`Reset "${name}" to Active status?`)) return;
+    fetch(`/api/machine/${docId}/reset`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showToast(`${name} reset to Active.`, 'success'); setTimeout(() => location.reload(), 1000); }
+            else showToast(d.error || 'Reset failed.', 'danger');
+        });
+}
+
+// ─── Quick actions ────────────────────────────────────────────
+async function emptyAllFull() {
+    const full = machinesData.filter(m => m.status === 'full' || m.capacity >= 90);
+    if (full.length === 0) { showToast('No full machines found.', 'info'); return; }
+    const withAdmin = full.filter(m => m.assigned_admin_id);
+    const noAdmin   = full.filter(m => !m.assigned_admin_id);
+    if (!confirm(`Notify admins for ${withAdmin.length} full machine(s)?${noAdmin.length ? ` (${noAdmin.length} without admin will be skipped)` : ''}`)) return;
+    const results = await Promise.all(withAdmin.map(m =>
+        fetch(`/api/machine/${m.doc_id}/notify_admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'empty_machine', priority: 'urgent' })
+        }).then(r => r.json()).catch(() => ({ success: false }))
+    ));
+    const ok = results.filter(r => r.success).length;
+    showToast(`${ok} admin(s) notified.${noAdmin.length ? ` ${noAdmin.length} skipped (no admin assigned).` : ''}`, ok > 0 ? 'success' : 'warning');
+    if (ok > 0) await loadNotifications();
+}
+
+function checkOffline() {
+    const offline = machinesData.filter(m => m.status === 'offline' || m.status === 'error');
+    if (offline.length === 0) { showToast('No offline machines.', 'success'); return; }
+    showToast(`${offline.length} offline machine(s): ${offline.map(m => m.name).join(', ')}`, 'warning');
+}
+
+function scheduleMaintenence() { openScheduleModal(); }
+
+function generateReport() {
+    window.location.href = '/reports';
+}
+
+// ─── Schedule Maintenance modal ───────────────────────────────
+function openScheduleModal() {
+    const sel = document.getElementById('schedMachineSelect');
+    sel.innerHTML = '<option value="">Select machine…</option>';
+    machinesData.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.doc_id;
+        opt.dataset.adminId = m.assigned_admin_id || '';
+        opt.dataset.adminName = m.assigned_admin_name || 'Unassigned';
+        opt.textContent = `${m.name} — ${m.location || 'Unknown'}`;
+        sel.appendChild(opt);
+    });
+    document.getElementById('schedAlert').className = 'alert d-none';
+    document.getElementById('schedSubmitBtn').disabled = false;
+    new bootstrap.Modal(document.getElementById('scheduleMaintModal')).show();
+}
+
+async function submitScheduleMaintenance() {
+    const sel = document.getElementById('schedMachineSelect');
+    const docId = sel.value;
+    const selectedOpt = sel.options[sel.selectedIndex];
+    const adminId   = selectedOpt?.dataset?.adminId || '';
+    const adminName = selectedOpt?.dataset?.adminName || 'Unassigned';
+    const type      = document.getElementById('schedType').value;
+    const priority  = document.getElementById('schedPriority').value;
+    const message   = document.getElementById('schedMessage').value.trim();
+    const alertEl   = document.getElementById('schedAlert');
+    const btn       = document.getElementById('schedSubmitBtn');
+
+    if (!docId) { alertEl.className = 'alert alert-warning'; alertEl.textContent = 'Please select a machine.'; return; }
+    if (!adminId) { alertEl.className = 'alert alert-warning'; alertEl.textContent = 'This machine has no assigned admin. Please assign one first.'; return; }
+
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/api/machine/${docId}/notify_admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, priority, message })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = `Task sent to ${adminName}.`;
+            await loadNotifications();
+            setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('scheduleMaintModal'))?.hide(), 1400);
+        } else {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = data.error || 'Failed to send task.';
+            btn.disabled = false;
+        }
+    } catch(e) {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Network error.';
+        btn.disabled = false;
+    }
+}
+
+// ─── Task Notifications panel ─────────────────────────────────
+let allNotifications = [];
+let _seenDoneIds     = new Set();
+
+// Persist seenDoneIds across page reloads so completions aren't missed
+function _loadSeenDoneIds() {
+    try {
+        const stored = localStorage.getItem('seenDoneTaskIds');
+        if (stored) JSON.parse(stored).forEach(id => _seenDoneIds.add(id));
+    } catch(e) {}
+}
+function _saveSeenDoneIds() {
+    try {
+        const arr = Array.from(_seenDoneIds).slice(-200); // keep last 200
+        localStorage.setItem('seenDoneTaskIds', JSON.stringify(arr));
+    } catch(e) {}
+}
+// _freshInstall: true only on the VERY FIRST poll when localStorage was empty
+// Flipped to false after first loadNotifications() so subsequent polls fire notifications
+let _freshInstall = !localStorage.getItem('seenDoneTaskIds');
+_loadSeenDoneIds(); // run immediately on script load
+
+async function loadNotifications() {
+    try {
+        const res = await fetch('/api/machine_notifications');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const doneNotifs = (data.notifications || []).filter(n => n.status === 'done');
+
+        // (completed task notifications are shown in the nav bell — see dashboard.js)
+
+        allNotifications = data.notifications;
+        const pending = data.pending_count || 0;
+        const badge = document.getElementById('tasksBadge');
+        if (badge) { badge.textContent = pending; badge.classList.toggle('d-none', pending === 0); }
+    } catch(e) { console.error('loadNotifications failed', e); }
+}
+
+function _showDoneNotification(machineName, action, who, note) {
+    // Prominent banner at top of page
+    let banner = document.getElementById('doneNotifBanner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'doneNotifBanner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;';
+        document.body.prepend(banner);
+    }
+    const id = 'done_' + Date.now();
+    const noteHtml = note ? `<small class="ms-2 opacity-75">“${note}”</small>` : '';
+    banner.insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="alert alert-success alert-dismissible d-flex align-items-center mb-0 border-0 rounded-0 shadow" style="font-size:0.95rem;">
+            <span class="me-2" style="font-size:1.2rem;">&#x2705;</span>
+            <strong>${machineName}</strong>&nbsp;has been <strong>${action}</strong> by <strong>${who}</strong>.${noteHtml}
+            <button type="button" class="btn-close ms-auto" onclick="document.getElementById('${id}').remove()"></button>
+        </div>`);
+    // Also show floating toast
+    showToast(`✅ <strong>${machineName}</strong> ${action} by ${who}.`, 'success', 10000);
+    // Auto-remove banner after 12s
+    setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 12000);
+}
+
+async function showTasksPanel() {
+    // Reset to loading state and open modal immediately
+    const loading   = document.getElementById('tasksLoading');
+    const pendingEl = document.getElementById('pendingTasksList');
+    const doneEl    = document.getElementById('doneTasksList');
+    loading.style.display   = '';
+    pendingEl.innerHTML     = '';
+    doneEl.innerHTML        = '';
+    pendingEl.style.display = '';
+    doneEl.style.display    = 'none';
+    // Reset tab highlight to Pending
+    const pendingBtn = document.getElementById('tabPendingBtn');
+    const doneBtn    = document.getElementById('tabDoneBtn');
+    if (pendingBtn) { pendingBtn.style.color = '#dc3545'; pendingBtn.style.borderBottom = '3px solid #dc3545'; pendingBtn.style.fontWeight = '700'; }
+    if (doneBtn)    { doneBtn.style.color    = '#6c757d'; doneBtn.style.borderBottom    = '3px solid transparent'; doneBtn.style.fontWeight    = '600'; }
+
+    new bootstrap.Modal(document.getElementById('tasksModal')).show();
+
+    // Fetch fresh data then render
+    await loadNotifications();
+    renderTasksPanel();
+}
+
+function renderTasksPanel() {
+    const pending = allNotifications.filter(n => n.status === 'pending');
+    const done    = allNotifications.filter(n => n.status === 'done');
+
+    const pendingBadge = document.getElementById('pendingTabCount');
+    if (pendingBadge) pendingBadge.textContent = pending.length || '';
+    const modalBadge = document.getElementById('tasksModalPendingBadge');
+    if (modalBadge) { modalBadge.textContent = `${pending.length} pending`; modalBadge.style.display = pending.length ? '' : 'none'; }
+
+    document.getElementById('tasksLoading').style.display = 'none';
+    document.getElementById('pendingTasksList').innerHTML = pending.length ? pending.map(n => _taskCard(n, true)).join('') : '<div class="text-center text-muted py-5"><p style="font-size:2rem;">&#x2705;</p><p>No pending tasks — all clear!</p></div>';
+    document.getElementById('doneTasksList').innerHTML   = done.length   ? done.map(n => _taskCard(n, false)).join('') : '<div class="text-center text-muted py-4">No completed tasks yet.</div>';
+    lucide.createIcons();
+}
+
+function _taskCard(n, isPending) {
+    const typeLabel = n.type === 'empty_machine' ? '🗑️ Empty Machine' : '🔧 Maintenance';
+    const urgentBadge = n.priority === 'urgent' ? '<span class="badge bg-danger ms-1">Urgent</span>' : '';
+    const completedInfo = !isPending && n.completedBy ? `
+        <div class="small text-success mt-2">✅ Completed by <strong>${n.completedBy}</strong> — ${n.completedAt || ''}
+            ${n.completionNote ? `<div class="text-muted fst-italic">“${n.completionNote}”</div>` : ''}
+        </div>` : '';
+    return `<div class="card mb-2 ${isPending && n.priority === 'urgent' ? 'border-danger' : 'border-0 bg-light'} shadow-sm">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${n.machineName}</strong> <small class="text-muted">${n.machineLocation}</small>
+                    <div class="mt-1">
+                        <span class="badge ${n.type === 'empty_machine' ? 'bg-warning text-dark' : 'bg-info text-dark'}">${typeLabel}</span>
+                        ${urgentBadge}
+                        ${!isPending ? '<span class="badge bg-success ms-1">✅ Done</span>' : ''}
+                    </div>
+                </div>
+                ${isPending ? `<button class="btn btn-sm btn-success" onclick="completeTaskFromWeb('${n.id}','${n.machineName.replace(/'/g,"'")}')">✔ Mark Done</button>` : ''}
+            </div>
+            <p class="small text-muted mt-2 mb-1">${n.message}</p>
+            <div class="d-flex gap-3 small text-muted">
+                <span>Admin: <strong>${n.assignedAdminName}</strong></span>
+                <span>By: ${n.createdBy}</span>
+                <span>${n.createdAt || ''}</span>
+            </div>
+            ${completedInfo}
+        </div>
+    </div>`;
+}
+
+function showTasksTab(tab, btn) {
+    // Reset both buttons
+    const pending = document.getElementById('tabPendingBtn');
+    const done    = document.getElementById('tabDoneBtn');
+    pending.style.color        = '#6c757d';
+    pending.style.borderBottom = '3px solid transparent';
+    pending.style.fontWeight   = '600';
+    done.style.color        = '#6c757d';
+    done.style.borderBottom = '3px solid transparent';
+    done.style.fontWeight   = '600';
+    // Highlight active
+    btn.style.borderBottom = '3px solid #0d6efd';
+    btn.style.color        = '#0d6efd';
+    btn.style.fontWeight   = '700';
+    document.getElementById('pendingTasksList').style.display = tab === 'pending' ? '' : 'none';
+    document.getElementById('doneTasksList').style.display    = tab === 'done'    ? '' : 'none';
+}
+
+async function completeTaskFromWeb(notifId, machineName) {
+    const note = prompt(`Note for "${machineName}" (optional):`) ?? '';
+    if (note === null) return;
+    try {
+        const res = await fetch(`/api/machine_notifications/${notifId}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ note })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Task marked as done.', 'success');
+            await loadNotifications();
+            renderTasksPanel();
+        } else { showToast(data.error || 'Failed.', 'danger'); }
+    } catch(e) { showToast('Network error.', 'danger'); }
+}
+
+// ─── Toast helper ─────────────────────────────────────────────
+function showToast(msg, type = 'info', duration = 4000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;min-width:300px;';
+        document.body.appendChild(container);
+    }
+    const id = 'toast_' + Date.now();
+    container.insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="toast align-items-center text-bg-${type} border-0 mb-2 show" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${msg}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('${id}').remove()"></button>
+            </div>
+        </div>`);
+    setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, duration);
+}
+
+// Auto-refresh page every 60 seconds for live data
+setTimeout(() => location.reload(), 60000);
+</script>
+{% endblock %}

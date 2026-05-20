@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Trash to Treasure{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">👑 Super User Dashboard</h1>
+            <p class="text-muted mb-0">Quick overview of the system</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i data-lucide="refresh-cw"></i>
+                Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Metrics Cards -->
+    <div class="row mb-4 g-3">
+        <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+            <div class="metric-card h-100">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dbeafe; color: #1e40af;">
+                        🧴
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.total_bottles or 0 }}</div>
+                <div class="metric-label">Total Bottles</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    +{{ ((stats.total_bottles / 7) | round) or 0 }}/week
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+            <div class="metric-card h-100">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #dcfce7; color: #166534;">
+                        💰
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.total_points or 0 }}</div>
+                <div class="metric-label">Total Points</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    {{ stats.active_users or 0 }} students
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+            <div class="metric-card h-100">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fef3c7; color: #92400e;">
+                        👥
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.active_users or 0 }}</div>
+                <div class="metric-label">Active Students</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    {{ ((stats.active_users / (student_data.total_students or 1) * 100) | round) if student_data and student_data.total_students else 0 }}% active
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+            <div class="metric-card h-100">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #fee2e2; color: #991b1b;">
+                        🎁
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.rewards_redeemed or 0 }}</div>
+                <div class="metric-label">Rewards Redeemed</div>
+                <div class="metric-change positive">
+                    <i data-lucide="trending-up"></i>
+                    Total redeemed
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+            <div class="metric-card h-100">
+                <div class="metric-card-header">
+                    <div class="metric-icon" style="background-color: #f3e8ff; color: #7c2d12;">
+                        ⚙️
+                    </div>
+                </div>
+                <div class="metric-value">{{ stats.machines_online or 0 }}/{{ stats.total_machines or 1 }}</div>
+                <div class="metric-label">Machines Online</div>
+                <div class="metric-change {% if stats.machines_online == stats.total_machines %}positive{% else %}negative{% endif %}">
+                    <i data-lucide="{% if stats.machines_online == stats.total_machines %}check-circle{% else %}alert-circle{% endif %}"></i>
+                    {% if stats.machines_online == stats.total_machines %}All operational{% else %}{{ stats.total_machines - stats.machines_online }} offline{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Recent Activity Row -->
+    <div class="row mb-4">
+        <!-- Charts Section -->
+        <div class="col-lg-8 mb-4">
+            <div class="row g-3">
+                <!-- Bottles per Department Chart -->
+                <div class="col-md-6">
+                    <div class="table-container h-100">
+                        <div class="table-header">
+                            <h5 class="table-title">Bottles by Department</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="departmentChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Most Redeemed Rewards Chart -->
+                <div class="col-md-6">
+                    <div class="table-container h-100">
+                        <div class="table-header">
+                            <h5 class="table-title">Popular Rewards</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="rewardsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Recent Activity</h5>
+                    <a href="{{ url_for('transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>
+                                    <div>
+                                        <div class="fw-medium">{{ transaction.user or 'Unknown User' }}</div>
+                                        <small class="text-muted">
+                                            {% if transaction.type == 'deposit' %}
+                                                Deposited {{ transaction.bottles or 0 }} bottles
+                                            {% elif transaction.type == 'redeem' %}
+                                                Redeemed {{ transaction.reward_name or 'reward' }}
+                                            {% else %}
+                                                {{ transaction.type|title }} transaction
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <div class="fw-bold {% if transaction.type == 'deposit' %}text-success{% else %}text-primary{% endif %}">
+                                        {% if transaction.type == 'deposit' %}+{% else %}-{% endif %}{{ transaction.points or 0 }} pts
+                                    </div>
+                                    <small class="text-muted">
+                                        {% if transaction.timestamp %}
+                                            {{ transaction.timestamp.strftime('%m/%d %H:%M') }}
+                                        {% else %}
+                                            Just now
+                                        {% endif %}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Machine Status Panel -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Machine Status Overview</h5>
+                    <a href="{{ url_for('machine_monitor') }}" class="btn btn-sm btn-outline-primary">Manage Machines</a>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="row g-3">
+                        {% if machines %}
+                            {% for machine in machines %}
+                            <div class="col-lg-3 col-md-4 col-sm-6">
+                                <div class="card border-0 shadow-sm h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <div>
+                                                <h6 class="mb-1">{{ machine.id }}</h6>
+                                                <small class="text-muted">{{ machine.location }}</small>
+                                            </div>
+                                            <span class="badge {% if machine.status == 'online' %}bg-success{% elif machine.status == 'full' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ machine.status|title }}
+                                            </span>
+                                        </div>
+                                        <div class="progress mb-2" style="height: 8px;">
+                                            <div class="progress-bar {% if machine.bottles >= 90 %}bg-danger{% elif machine.bottles >= 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                                 role="progressbar" 
+                                                 data-width="{{ machine.bottles }}"></div>
+                                        </div>
+                                        <small class="text-muted">{{ machine.bottles }}% Full</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i data-lucide="info"></i>
+                                    No machines registered yet. Add a machine to get started.
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if machines|length < 4 %}
+                            {% for i in range(4 - machines|length) %}
+                            <div class="col-lg-3 col-md-4 col-sm-6">
+                                <div class="card border-2 border-dashed h-100" style="border-color: #dee2e6;">
+                                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
+                                        <i data-lucide="plus-circle" class="mb-2 text-muted"></i>
+                                        <small class="text-muted">Add Machine</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">Top Students This Week</h5>
+                    <a href="{{ url_for('users') }}" class="btn btn-sm btn-outline-primary">Manage Students</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Bottles</th>
+                                <th>Points</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if students %}
+                                {% for student in students %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="profile-avatar me-2" style="width: 32px; height: 32px; font-size: 0.75rem;">
+                                                {{ student.full_name[0] if student.full_name else 'S' }}
+                                            </div>
+                                            <strong>{{ student.full_name or 'N/A' }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>{{ student.email or 'No email' }}</td>
+                                    <td>{{ student.department or 'No department' }}</td>
+                                    <td><span class="badge bg-primary">{{ student.bottles or 0 }}</span></td>
+                                    <td><span class="badge bg-success">{{ student.points or 0 }} pts</span></td>
+                                    <td>
+                                        <span class="status-badge {% if student.status == 'active' %}success{% elif student.status == 'pending' %}warning{% else %}danger{% endif %}">
+                                            {{ student.status|title or 'Active' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i data-lucide="users"></i>
+                                        <p class="mt-2">No students found. Encourage students to register!</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="dept-data">{{ dept_data | tojson | safe if dept_data else 'null' }}</script>
+<script type="application/json" id="rewards-data">{{ popular_rewards | list | tojson | safe if popular_rewards else 'null' }}</script>
+<script>
+// Initialize Charts
+document.addEventListener('DOMContentLoaded', function() {
+    // Department Chart - Real Data from Firebase
+    const departmentCtx = document.getElementById('departmentChart');
+    if (departmentCtx) {
+        const deptData = JSON.parse(document.getElementById('dept-data').textContent);
+        const deptLabels = deptData ? Object.keys(deptData) : ['No Data'];
+        const deptValues = deptData ? Object.values(deptData) : [0];
+        
+        new Chart(departmentCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: deptLabels,
+                datasets: [{
+                    label: 'Bottles Collected',
+                    data: deptValues,
+                    backgroundColor: [
+                        '#10b981',
+                        '#3b82f6',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6',
+                        '#ec4899'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Rewards Chart - Real Data from Firebase
+    const rewardsCtx = document.getElementById('rewardsChart');
+    if (rewardsCtx) {
+        const rawRewards = JSON.parse(document.getElementById('rewards-data').textContent);
+        const rewardLabels = rawRewards ? rawRewards.map(r => r[0]) : ['No Redemptions'];
+        const rewardValues = rawRewards ? rawRewards.map(r => r[1]) : [0];
+        
+        new Chart(rewardsCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: rewardLabels,
+                datasets: [{
+                    data: rewardValues,
+                    backgroundColor: [
+                        '#10b981',
+                        '#3b82f6',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Apply progress bar widths from data attributes
+    document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+        bar.style.width = bar.getAttribute('data-width') + '%';
+    });
+
+    // Reinitialize Lucide icons after page load
+    setTimeout(() => {
+        lucide.createIcons();
+    }, 100);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+#define CAP_PIN    3
+#define BUZZER_PIN 6
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(CAP_PIN, INPUT_PULLUP);
+  pinMode(BUZZER_PIN, OUTPUT);
+}
+
+void loop() {
+  int countLow = 0;
+  for (int i = 0; i < 40; i++) {
+    if (digitalRead(CAP_PIN) == LOW) countLow++;
+    delay(5);
+  }
+
+  if (countLow <= 7) {
+    Serial.println("MATERIAL:PET");
+    tone(BUZZER_PIN, 2500, 150);
+  } else if (countLow <= 32) {
+    Serial.println("MATERIAL:GLASS");
+    tone(BUZZER_PIN, 800, 400);
+  } else {
+    Serial.println("MATERIAL:METAL");
+    tone(BUZZER_PIN, 400, 600);
+  }
+
+  delay(1000);
+}

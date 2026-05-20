@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T2T System Logic Explanation</title>
+  <style>
+    :root {
+      --bg: #f8f6f1;
+      --paper: #ffffff;
+      --ink: #1b1f24;
+      --muted: #4c5661;
+      --accent: #0f766e;
+      --accent-2: #0b4f4a;
+      --line: #d9e1e8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top right, #e6f4f1 0%, var(--bg) 45%);
+      line-height: 1.55;
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 28px 34px;
+      box-shadow: 0 8px 24px rgba(8, 42, 38, 0.08);
+    }
+
+    h1, h2, h3 { line-height: 1.25; margin: 0 0 12px 0; }
+
+    h1 {
+      font-size: 30px;
+      color: var(--accent-2);
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 22px;
+      color: var(--accent);
+      margin-top: 26px;
+      border-bottom: 2px solid #d9ece9;
+      padding-bottom: 6px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-top: 18px;
+      color: #0f3f5f;
+    }
+
+    p { margin: 8px 0; }
+
+    .subtitle {
+      margin: 0 0 14px 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      background: #fbfefd;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 10px 0;
+    }
+
+    code {
+      background: #eef4f8;
+      border: 1px solid #dce6ee;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 90%;
+    }
+
+    ul, ol { margin: 8px 0 10px 22px; }
+
+    li { margin: 4px 0; }
+
+    .flow {
+      border: 1px dashed #9fc9c3;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f7fcfb;
+      font-family: Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      .page {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        max-width: 100%;
+        padding: 10mm 10mm 12mm 10mm;
+      }
+      h2 { break-after: avoid; }
+      h3, p, li { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>T2T System Logic Explanation</h1>
+    <p class="subtitle">Based on: <code>arduino/bottle_sensor/bottle_sensor.ino</code>, <code>arduino/qr_arduino/qr_arduino.ino</code>, and <code>arduino/bridge.py</code></p>
+
+    <h2>1. System Roles</h2>
+    <div class="card">
+      <p><strong>Arduino #1 (bottle_sensor)</strong>: LCD user interface, ultrasonic bottle detection, gate servo control, buzzer feedback.</p>
+      <p><strong>Arduino #2 (qr_arduino)</strong>: QR input, IR obstacle alerts, capacitive material scan (PET/GLASS/METAL).</p>
+      <p><strong>bridge.py</strong>: Central coordinator between both Arduinos + Firebase lookup/update logic.</p>
+    </div>
+
+    <h2>2. Communication Protocol</h2>
+    <h3>Bridge to bottle_sensor</h3>
+    <ul>
+      <li><code>STUDENT:&lt;name&gt;:&lt;id&gt;</code> starts session</li>
+      <li><code>ACCEPTED</code> opens gate + increments bottle count on bottle_sensor side</li>
+      <li><code>REJECTED:&lt;reason&gt;</code> keeps gate closed + shows rejection</li>
+      <li><code>OBSTACLE:1</code> or <code>OBSTACLE:0</code> shows IR obstruction state</li>
+      <li><code>ERROR:notfound</code> shows student-not-found message</li>
+    </ul>
+
+    <h3>bottle_sensor to Bridge</h3>
+    <ul>
+      <li><code>BOTTLE_DETECTED:&lt;studentID&gt;</code> when ultrasonic edge-detects bottle insertion</li>
+      <li><code>SESSION_START:&lt;studentID&gt;</code> and <code>SESSION_END:&lt;studentID&gt;</code></li>
+    </ul>
+
+    <h3>Bridge and qr_arduino</h3>
+    <ul>
+      <li><code>QR:&lt;uid&gt;</code> from qr_arduino after scan</li>
+      <li><code>SCAN_MATERIAL</code> sent by bridge to request capacitive reading</li>
+      <li><code>MATERIAL:PET|GLASS|METAL</code> response from qr_arduino</li>
+      <li><code>IR:ALERT</code> and <code>IR:CLEAR</code> from qr_arduino</li>
+    </ul>
+
+    <h2>3. End-to-End Flow (Normal Case)</h2>
+    <div class="flow">1) Student scans QR on qr_arduino
+2) qr_arduino sends QR:&lt;uid&gt; to bridge
+3) bridge finds student in Firebase
+4) bridge sends STUDENT:&lt;name&gt;:&lt;docID&gt; to bottle_sensor
+5) bottle_sensor enters active session and shows welcome LCD
+6) user inserts bottle, ultrasonic detects leading edge
+7) bottle_sensor sends BOTTLE_DETECTED:&lt;id&gt;
+8) bridge sends SCAN_MATERIAL to qr_arduino
+9) qr_arduino classifies material and sends MATERIAL:PET/GLASS/METAL
+10) bridge decides:
+    - PET   -> sends ACCEPTED and updates Firebase points/bottles
+    - OTHER -> sends REJECTED:&lt;type&gt;
+11) bottle_sensor updates LCD + buzzer + gate state
+12) session continues until timeout/max bottles/end command</div>
+
+    <h2>4. bottle_sensor State Logic</h2>
+    <h3>Key state variables</h3>
+    <ul>
+      <li><code>sessionActive</code>: allows bottle checks only during a student session</li>
+      <li><code>waitingForResult</code>: lockout after sending <code>BOTTLE_DETECTED</code>; prevents duplicate detections until result arrives</li>
+      <li><code>bottleWasPresent</code>: edge detection (fire only when bottle first appears)</li>
+      <li><code>obstacleBlocked</code>: pause detection when IR alert is active</li>
+      <li><code>screenRevertAt</code>: non-blocking LCD temporary screen timer</li>
+      <li><code>gateOpen</code> and <code>gateOpenedAt</code>: servo auto-close timing</li>
+    </ul>
+
+    <h3>Main loop behavior</h3>
+    <ol>
+      <li>Read incoming bridge command.</li>
+      <li>Handle timed screen reversion (without blocking entire loop).</li>
+      <li>Auto-close servo gate after configured open duration.</li>
+      <li>If session is active and not blocked and not waiting for classification result, run ultrasonic bottle detection.</li>
+      <li>Print periodic distance debug line.</li>
+    </ol>
+
+    <h3>Why edge-trigger + cooldown matters</h3>
+    <p>Ultrasonic measurements can remain in-range while bottle stays near the sensor. The combination of <code>bottleWasPresent</code> (edge-trigger) and <code>BOTTLE_COOLDOWN</code> avoids repeated <code>BOTTLE_DETECTED</code> spam for one physical insertion event.</p>
+
+    <h2>5. qr_arduino Material Logic</h2>
+    <p>When <code>SCAN_MATERIAL</code> is received, the board samples the digital capacitive output repeatedly (40 samples total) and counts how many reads are LOW. The result bucket determines material type:</p>
+    <ul>
+      <li>Low count: PET</li>
+      <li>Mid count: GLASS</li>
+      <li>High count: METAL</li>
+    </ul>
+    <p>This classification is intentionally performed on qr_arduino, while the final accept/reject action is decided by bridge.py.</p>
+
+    <h2>6. bridge.py Decision Logic</h2>
+    <ol>
+      <li>Reads events from both serial ports continuously.</li>
+      <li>On QR event, looks up student and sends session-start payload to bottle_sensor.</li>
+      <li>On bottle detection, requests material scan and waits for response.</li>
+      <li>On material result:
+        <ul>
+          <li>PET: send <code>ACCEPTED</code>, update Firebase points/bottles.</li>
+          <li>GLASS/METAL/UNKNOWN: send <code>REJECTED:&lt;reason&gt;</code>.</li>
+        </ul>
+      </li>
+      <li>If Firebase is unavailable, enqueue unsent updates in local backup and retry periodically.</li>
+    </ol>
+
+    <h2>7. Error and Safety Paths</h2>
+    <ul>
+      <li><strong>Student not found</strong>: bridge sends <code>ERROR:notfound</code>; bottle_sensor shows error screen and returns to idle.</li>
+      <li><strong>Material timeout</strong>: if no material response arrives in time, bridge sends rejection timeout.</li>
+      <li><strong>Obstacle active</strong>: IR alerts pause bottle acceptance path and display warning.</li>
+      <li><strong>Session timeout</strong>: bottle_sensor auto-ends inactive sessions after configured duration.</li>
+      <li><strong>Gate fail-safe</strong>: gate is explicitly closed on rejection, timeout, and session end.</li>
+    </ul>
+
+    <h2>8. Practical Summary</h2>
+    <p>The architecture separates sensing, actuator/UI control, and business logic. That separation makes the system easier to debug and safer: qr_arduino specializes in signal acquisition, bottle_sensor specializes in user-facing control and physical gate behavior, and bridge.py enforces the final decision and data consistency with Firebase/offline backup.</p>
+
+    <p class="small">Generated on April 23, 2026.</p>
+  </div>
+</body>
+</html>

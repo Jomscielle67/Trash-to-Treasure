@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | Trash to Treasure</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+
+        :root {
+            --t2t-dark:       #0f1f0f;
+            --t2t-dark2:      #162616;
+            --t2t-dark3:      #1e3420;
+            --t2t-green:      #22c55e;
+            --t2t-green-lite: #4ade80;
+            --t2t-border:     rgba(255,255,255,0.12);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { font-family:'Open Sans',sans-serif; background:#0a150a; color:#fff; overflow-x:hidden; }
+        h1,h2,h3,.brand-logo { font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; }
+
+        .announcement-bar {
+            background:var(--t2t-dark); border-bottom:1px solid rgba(34,197,94,.25);
+            padding:10px 0; text-align:center; font-size:.82rem; font-weight:600;
+            letter-spacing:.04em; color:var(--t2t-green-lite);
+        }
+
+        .main-nav {
+            position:sticky; top:0; z-index:1000;
+            background:rgba(15,31,15,.97); backdrop-filter:blur(12px);
+            border-bottom:1px solid var(--t2t-border);
+        }
+        .nav-inner { display:flex; align-items:center; justify-content:space-between; max-width:1400px; margin:0 auto; padding:0 2rem; height:68px; }
+        .nav-links { display:flex; gap:2.2rem; list-style:none; }
+        .nav-links a { color:rgba(255,255,255,.75); text-decoration:none; font-size:.78rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; transition:color .25s; }
+        .nav-links a:hover, .nav-links a.active { color:var(--t2t-green-lite); }
+        .brand-logo { font-size:1.6rem; font-weight:700; color:#fff; text-decoration:none; letter-spacing:.08em; text-align:center; }
+        .brand-logo span { color:var(--t2t-green-lite); font-style:italic; }
+        .nav-icons { display:flex; gap:1rem; align-items:center; }
+        .nav-btn { background:var(--t2t-green); color:#fff !important; border-radius:4px; padding:6px 16px !important; font-size:.72rem !important; font-family:'Oswald',sans-serif; letter-spacing:.1em !important; text-decoration:none; }
+        .nav-btn:hover { background:var(--t2t-green-lite) !important; color:#0f1f0f !important; }
+        .hamburger { display:none; background:none; border:none; cursor:pointer; }
+        .hamburger span { display:block; width:24px; height:2px; background:#fff; margin:5px 0; }
+        .mobile-menu { display:none; position:fixed; inset:0; background:var(--t2t-dark); z-index:2000; flex-direction:column; padding:2rem; }
+        .mobile-menu.open { display:flex; }
+        .mobile-menu a { color:#fff; text-decoration:none; font-family:'Oswald',sans-serif; font-size:2rem; padding:.8rem 0; border-bottom:1px solid var(--t2t-border); }
+        @media(max-width:991px){ .nav-links{display:none;} .hamburger{display:block;} }
+
+        .breadcrumb-bar { background:rgba(34,197,94,.05); border-bottom:1px solid rgba(34,197,94,.1); padding:.65rem 0; }
+        .breadcrumb-bar .bc { display:flex; gap:.5rem; align-items:center; font-size:.8rem; color:rgba(255,255,255,.4); }
+        .breadcrumb-bar .bc a { color:rgba(255,255,255,.55); text-decoration:none; }
+        .breadcrumb-bar .bc a:hover { color:var(--t2t-green-lite); }
+        .breadcrumb-bar .bc .sep { color:rgba(255,255,255,.2); }
+        .breadcrumb-bar .bc .current { color:var(--t2t-green-lite); font-weight:600; }
+
+        .page-hero {
+            padding:80px 0 60px;
+            background:linear-gradient(135deg,var(--t2t-dark) 0%,var(--t2t-dark3) 100%);
+            position:relative; overflow:hidden;
+        }
+        .page-hero::before {
+            content:'';
+            position:absolute; inset:0;
+            background-image:radial-gradient(circle,rgba(34,197,94,.25) 1px,transparent 1px);
+            background-size:50px 50px; opacity:.25;
+            animation:particleDrift 20s linear infinite;
+        }
+        @keyframes particleDrift { from{background-position:0 0;} to{background-position:0 50px;} }
+        .page-hero .badge-label { display:inline-block; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.3); color:var(--t2t-green-lite); font-size:.72rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; padding:.35em 1em; border-radius:20px; margin-bottom:1.25rem; }
+        .page-hero h1 { font-size:clamp(2.2rem,5vw,3.8rem); color:#fff; margin-bottom:.6rem; }
+        .page-hero p  { color:rgba(255,255,255,.6); font-size:1rem; max-width:600px; line-height:1.7; }
+
+        .content-area { padding:70px 0 90px; }
+
+        .section-label { font-size:.72rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--t2t-green-lite); margin-bottom:.6rem; }
+        .section-title { font-family:'Oswald',sans-serif; font-size:clamp(1.8rem,3.5vw,2.6rem); font-weight:700; color:#fff; margin-bottom:.65rem; letter-spacing:.04em; }
+        .section-sub   { font-size:.95rem; color:rgba(255,255,255,.5); line-height:1.75; max-width:540px; margin:0 auto 3.5rem; }
+
+        /* Team grid */
+        .team-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; }
+        @media(min-width:576px) and (max-width:991px){ .team-grid{ grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:575px){ .team-grid{ grid-template-columns:1fr; } }
+
+        .team-card {
+            background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+            border-radius:16px; padding:2.5rem 1.75rem 2rem; text-align:center;
+            position:relative; overflow:hidden;
+            transition:transform .25s, box-shadow .25s, border-color .25s;
+        }
+        .team-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background:linear-gradient(90deg,var(--t2t-green),var(--t2t-green-lite));
+        }
+        .team-card:hover { transform:translateY(-6px); box-shadow:0 16px 48px rgba(34,197,94,.12); border-color:rgba(34,197,94,.28); }
+
+        .avatar {
+            width:84px; height:84px; border-radius:50%;
+            background:rgba(34,197,94,.1); border:2px solid rgba(34,197,94,.3);
+            display:flex; align-items:center; justify-content:center;
+            margin:0 auto 1.35rem; font-size:2.1rem; color:var(--t2t-green-lite);
+        }
+        .member-name { font-family:'Oswald',sans-serif; font-size:1.3rem; font-weight:700; color:#fff; letter-spacing:.04em; margin-bottom:.5rem; }
+        .role-badge {
+            display:inline-block; background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.28);
+            color:var(--t2t-green-lite); font-size:.7rem; font-weight:700; letter-spacing:.12em;
+            text-transform:uppercase; padding:.3em 1em; border-radius:20px; margin-bottom:1.25rem;
+        }
+        .fun-line {
+            font-style:italic; font-size:.88rem; color:rgba(255,255,255,.48); line-height:1.65;
+            border-top:1px solid rgba(255,255,255,.07); padding-top:1.1rem; margin-top:.1rem;
+        }
+        .fun-line::before { content:'\201C'; color:var(--t2t-green); font-size:1.3rem; line-height:0; vertical-align:-.28em; margin-right:.12em; }
+        .fun-line::after  { content:'\201D'; color:var(--t2t-green); font-size:1.3rem; line-height:0; vertical-align:-.28em; margin-left:.12em; }
+
+        /* Footer */
+        .t2t-footer { background:#080f08; padding:60px 0 30px; border-top:1px solid var(--t2t-border); }
+        .footer-brand { font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:700; color:#fff; margin-bottom:1rem; }
+        .footer-brand em { color:var(--t2t-green-lite); font-style:italic; }
+        .footer-text { font-size:.83rem; color:rgba(255,255,255,.4); line-height:1.7; }
+        .footer-title { font-family:'Oswald',sans-serif; font-size:.75rem; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.5); margin-bottom:1.2rem; }
+        .footer-links { list-style:none; padding:0; }
+        .footer-links li { margin-bottom:.6rem; }
+        .footer-links a { color:rgba(255,255,255,.45); text-decoration:none; font-size:.85rem; transition:color .25s; }
+        .footer-links a:hover { color:var(--t2t-green-lite); }
+        .footer-bottom { margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,.08); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+        .footer-bottom p { font-size:.78rem; color:rgba(255,255,255,.28); margin:0; }
+
+    </style>
+</head>
+<body>
+
+<!-- Announcement -->
+<div class="announcement-bar">
+    <span>&#127807;</span> RECYCLE &middot; EARN &middot; REDEEM <span>&#9851;</span> &mdash; TRASH TO TREASURE CAMPUS ECO PROGRAMME
+</div>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <span class="brand-logo">TRASH <span>2</span> TREASURE</span>
+        <button class="hamburger" onclick="document.getElementById('mobileMenu').classList.remove('open')">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('home') }}#features">Our System</a>
+    <a href="{{ url_for('home') }}#download">Download App</a>
+    <a href="{{ url_for('help_center') }}" class="">Help Center</a>
+    <a href="{{ url_for('contact_us') }}" class="">Contact Us</a>
+    <a href="{{ url_for('report_issue') }}" class="">Report Issue</a>
+    <a href="{{ url_for('about') }}" class="active">About</a>
+    <a href="{{ url_for('home') }}#login" style="color:var(--t2t-green-lite);margin-top:1rem;">Admin Login</a>
+</div>
+
+<!-- Navbar -->
+<nav class="main-nav">
+    <div class="nav-inner">
+        <ul class="nav-links">
+            <li><a href="{{ url_for('home') }}#features">Our System</a></li>
+            <li><a href="{{ url_for('home') }}#eco">Our Mission</a></li>
+            <li><a href="{{ url_for('home') }}#download">Download</a></li>
+        </ul>
+        <a href="{{ url_for('home') }}" class="brand-logo">TRASH <span>2</span> TREASURE</a>
+        <div class="nav-icons">
+            <ul class="nav-links" style="margin:0;">
+                <li><a href="{{ url_for('help_center') }}" class="">Help</a></li>
+                <li><a href="{{ url_for('contact_us') }}" class="">Contact</a></li>
+                <li><a href="{{ url_for('report_issue') }}" class="">Report</a></li>
+                <li><a href="{{ url_for('about') }}" class="active">About</a></li>
+            </ul>
+            <a href="{{ url_for('home') }}#login" class="nav-btn">ADMIN LOGIN</a>
+        </div>
+        <button class="hamburger" onclick="document.getElementById('mobileMenu').classList.add('open')">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb-bar">
+    <div class="container">
+        <div class="bc">
+            <a href="{{ url_for('home') }}"><i class="fas fa-home"></i> Home</a>
+            <span class="sep">/</span>
+            <span class="current">About</span>
+        </div>
+    </div>
+</div>
+
+<!-- Hero -->
+<section class="page-hero">
+    <div class="container" style="position:relative;z-index:2;">
+        <span class="badge-label">Our Team</span>
+        <h1>&#128100; Meet the Team</h1>
+        <p>The people behind Trash to Treasure — united by a shared goal to make campus recycling smarter, greener, and more rewarding.</p>
+    </div>
+</section>
+
+<!-- Team Cards -->
+<section class="content-area">
+    <div class="container">
+        <div class="text-center">
+            <p class="section-label">The Developers</p>
+            <h2 class="section-title">People Behind T2T</h2>
+            <p class="section-sub">A small team with a big mission — turning everyday trash into measurable eco-impact for every student on campus.</p>
+        </div>
+        <div class="team-grid">
+
+            <!-- John Jomel C. Pamis -->
+            <div class="team-card">
+                <div class="avatar">
+                    <i class="fas fa-code"></i>
+                </div>
+                <div class="member-name">John Jomel C. Pamis</div>
+                <span class="role-badge">&#128736; Project Leader &amp; Developer</span>
+                <p class="fun-line">Turning ideas into reality through code</p>
+            </div>
+
+            <!-- Michael Vincent Angeles -->
+            <div class="team-card">
+                <div class="avatar">
+                    <i class="fas fa-paint-brush"></i>
+                </div>
+                <div class="member-name">Michael Vincent Angeles</div>
+                <span class="role-badge">&#127912; Designer &amp; Editor</span>
+                <p class="fun-line">Bringing creativity into every detail</p>
+            </div>
+
+            <!-- Andrei Caravana -->
+            <div class="team-card">
+                <div class="avatar">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="member-name">Andrei Caravana</div>
+                <span class="role-badge">&#128270; Researcher &amp; Support</span>
+                <p class="fun-line">Finding value in the smallest things</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="t2t-footer">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="footer-brand">TRASH <em>2</em> TREASURE</div>
+                <p class="footer-text">A university-based smart recycling reward system empowering students to make a green impact — one bottle at a time.</p>
+            </div>
+            <div class="col-lg-2 offset-lg-1">
+                <div class="footer-title">Pages</div>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    <li><a href="{{ url_for('home') }}#features">Our System</a></li>
+                    <li><a href="{{ url_for('home') }}#download">Download App</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-2">
+                <div class="footer-title">Support</div>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+                    <li><a href="{{ url_for('contact_us') }}">Contact Us</a></li>
+                    <li><a href="{{ url_for('report_issue') }}">Report Issue</a></li>
+                    <li><a href="{{ url_for('about') }}">About</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-3">
+                <div class="footer-title">Admin</div>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('home') }}#login">Admin Login</a></li>
+                    <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Trash to Treasure. All rights reserved.</p>
+            <p>Built with &#127807; for a greener campus</p>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

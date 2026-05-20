@@ -1,0 +1,834 @@
+{% extends "base.html" %}
+
+{% block title %}Settings | Trash to Treasure{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">⚙️ Settings</h1>
+            <p class="text-muted mb-0">System preferences and configuration</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="saveAllSettings(this)">
+                <i data-lucide="save"></i>
+                Save All Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Sections -->
+    <div class="row">
+        <!-- Profile Settings -->
+        <div class="col-lg-6 mb-4" id="profile">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">👤 Super User Profile</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <form id="profileForm">
+                        <div class="text-center mb-4">
+                            <div class="profile-avatar mx-auto mb-3" id="avatarCircle" style="width: 80px; height: 80px; font-size: 2rem; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                                {% if current_user.profile_image_url %}
+                                <img id="avatarImg" src="{{ current_user.profile_image_url }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                                {% else %}
+                                <span id="avatarInitials">{{ (current_user.full_name or 'SU')[:2].upper() }}</span>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="triggerPhotoInput()">
+                                <i data-lucide="camera"></i>
+                                Change Photo
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="fullName" value="{{ current_user.full_name or '' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" value="{{ current_user.email or '' }}" readonly>
+                            <small class="text-muted">Email cannot be changed here.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" value="{{ current_user.phone_number or '' }}">
+                        </div>
+                        
+                        <div id="profileMsg" class="mb-2" style="display:none;"></div>
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="updateProfile()">
+                            Update Profile
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="col-lg-6 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">🔒 Security Settings</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <form id="securityForm">
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="currentPassword">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="newPassword">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="twoFactorAuth" {% if current_user.two_factor_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="twoFactorAuth">
+                                    Enable Two-Factor Authentication
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="loginNotifications" checked>
+                                <label class="form-check-label" for="loginNotifications">
+                                    Email notifications for logins
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="securityMsg" class="mb-2" style="display:none;"></div>
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="updateSecurity()">
+                            Update Security Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technicians -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header d-flex justify-content-between align-items-center">
+                    <h5 class="table-title mb-0">🔧 Technicians</h5>
+                    <button class="btn btn-sm btn-primary" onclick="openTechModal()">
+                        <i data-lucide="user-plus"></i> Add Technician
+                    </button>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0" id="techTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Employee ID</th>
+                                    <th>Assigned Machine</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="techTableBody">
+                            {% for tech in technicians %}
+                                <tr id="tech-row-{{ tech.id }}">
+                                    <td>{{ tech.name }}</td>
+                                    <td>{{ tech.email }}</td>
+                                    <td>{{ tech.phone_number or '—' }}</td>
+                                    <td>{{ tech.employee_id or '—' }}</td>
+                                    <td>{{ tech.assigned_machine | default('—') }}</td>
+                                    <td><span class="status-badge {{ 'success' if tech.status == 'active' else 'danger' }}" style="font-size:0.7rem;">{{ tech.status | default('active') | capitalize }}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteTech('{{ tech.id }}', this)">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr id="techEmptyRow"><td colspan="7" class="text-muted text-center py-3">No technicians yet. Click <strong>Add Technician</strong> to create one.</td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Configuration -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">🎛️ System Configuration</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Point System</h6>
+                            
+                            <div class="mb-3">
+                                <label for="pointsPerBottle" class="form-label">Points per Bottle</label>
+                                <input type="number" class="form-control" id="pointsPerBottle" value="{{ sys_settings.get('pointsPerBottle', 1) }}" min="1">
+                                <small class="text-muted">How many points users earn per bottle deposited</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="bonusMultiplier" class="form-label">Weekly Bonus Multiplier</label>
+                                <input type="number" class="form-control" id="bonusMultiplier" value="{{ sys_settings.get('bonusMultiplier', 1.0) }}" step="0.1" min="1">
+                                <small class="text-muted">Bonus multiplier for active users</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="minimumRedemption" class="form-label">Minimum Redemption Points</label>
+                                <input type="number" class="form-control" id="minimumRedemption" value="{{ sys_settings.get('minimumRedemption', 10) }}" min="1">
+                                <small class="text-muted">Minimum points required for any redemption</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Machine Settings</h6>
+                            
+                            <div class="mb-3">
+                                <label for="machineCapacity" class="form-label">Default Machine Capacity</label>
+                                <input type="number" class="form-control" id="machineCapacity" value="{{ sys_settings.get('machineCapacity', 100) }}" min="1">
+                                <small class="text-muted">Default capacity for new machines (bottles)</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="maintenanceInterval" class="form-label">Maintenance Interval (days)</label>
+                                <input type="number" class="form-control" id="maintenanceInterval" value="{{ sys_settings.get('maintenanceInterval', 30) }}" min="1">
+                                <small class="text-muted">How often machines need maintenance</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="fullThreshold" class="form-label">Full Threshold (%)</label>
+                                <input type="number" class="form-control" id="fullThreshold" value="{{ sys_settings.get('fullThreshold', 90) }}" min="50" max="100">
+                                <small class="text-muted">Capacity percentage to mark machine as full</small>
+                            </div>
+                            <div id="systemMsg" style="display:none;"></div>
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="saveSystemConfig(this)">
+                                Save System Config
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Management -->
+        <div class="col-lg-4 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">🏫 Departments</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    {% for dept in departments %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><strong>{{ dept.name }}</strong></span>
+                            <span class="status-badge {% if dept.is_active %}success{% else %}danger{% endif %}" style="font-size:0.7rem;">
+                                {{ 'Active' if dept.is_active else 'Inactive' }}
+                            </span>
+                        </div>
+                        <small class="text-muted">{{ dept.description or 'No description' }}</small>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No departments found.</p>
+                    {% endfor %}
+                    <a href="{{ url_for('departments') }}" class="btn btn-outline-success btn-sm w-100">
+                        <i data-lucide="settings"></i>
+                        Manage Departments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Settings -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">🔔 Notification Preferences</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="emailReports" checked>
+                            <label class="form-check-label" for="emailReports">
+                                <strong>Daily Email Reports</strong><br>
+                                <small class="text-muted">Receive daily system summary via email</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="machineAlerts" checked>
+                            <label class="form-check-label" for="machineAlerts">
+                                <strong>Machine Alerts</strong><br>
+                                <small class="text-muted">Notifications when machines are full or offline</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="userAlerts">
+                            <label class="form-check-label" for="userAlerts">
+                                <strong>User Management Alerts</strong><br>
+                                <small class="text-muted">Notifications for new user registrations</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="systemAlerts" checked>
+                            <label class="form-check-label" for="systemAlerts">
+                                <strong>System Maintenance</strong><br>
+                                <small class="text-muted">Critical system updates and maintenance notifications</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme and Branding -->
+        <div class="col-lg-6 mb-4">
+            <div class="table-container">
+                <div class="table-header">
+                    <h5 class="table-title">🎨 Theme & Branding</h5>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="mb-3">
+                        <label for="systemName" class="form-label">System Name</label>
+                        <input type="text" class="form-control" id="systemName" value="Trash to Treasure">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="primaryColor" class="form-label">Primary Color</label>
+                        <input type="color" class="form-control form-control-color" id="primaryColor" value="#10b981">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="logoUpload" class="form-label">System Logo</label>
+                        <input type="file" class="form-control" id="logoUpload" accept="image/*">
+                        <small class="text-muted">Recommended size: 200x60 pixels</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="theme" class="form-label">Color Theme</label>
+                        <select class="form-select" id="theme">
+                            <option value="light" selected>Light Mode</option>
+                            <option value="dark">Dark Mode</option>
+                            <option value="auto">Auto (System Preference)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Settings -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="table-title">🔧 Advanced Settings</h5>
+        </div>
+        <div style="padding: 1.5rem;">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6 class="mb-3">Database</h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Firebase</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Cloud Firestore (auto-managed)</span>
+                            <span class="status-badge success" style="font-size:0.7rem;">Connected</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoBackup" checked>
+                            <label class="form-check-label" for="autoBackup">
+                                Enable automatic daily backups
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <h6 class="mb-3">Data Retention</h6>
+                    
+                    <div class="mb-3">
+                        <label for="logRetention" class="form-label">Log Retention (days)</label>
+                        <input type="number" class="form-control" id="logRetention" value="90" min="30">
+                        <small class="text-muted">How long to keep system logs</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="transactionRetention" class="form-label">Transaction History (days)</label>
+                        <input type="number" class="form-control" id="transactionRetention" value="365" min="90">
+                        <small class="text-muted">How long to keep transaction records</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <h6 class="mb-3">System Maintenance</h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">System Status</label>
+                        <div>
+                            <span class="status-badge success">🟢 Operational</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button class="btn btn-outline-warning btn-sm w-100" onclick="openMaintenanceModal()">
+                            <i data-lucide="settings"></i>
+                            Schedule Maintenance
+                        </button>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button class="btn btn-outline-info btn-sm w-100" onclick="exportLogs()">
+                            <i data-lucide="download"></i>
+                            Export System Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Photo file input — placed here (outside all forms & Bootstrap rows) so .click() works in every browser -->
+<input type="file" id="photoInput" accept="image/*" style="position:fixed;top:-999px;left:-999px;" onchange="previewPhoto(this)">
+
+<!-- Maintenance Modal -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🔧 Schedule Maintenance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Machine</label>
+                    <select class="form-select" id="maintMachine">
+                        <option value="">— Select machine —</option>
+                        {% for m in machines %}
+                        <option value="{{ m.machine_id }}">{{ m.name or m.machine_id }} ({{ m.location or 'Unknown' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="maintDate">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" id="maintType">
+                        <option value="routine">Routine</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="inspection">Inspection</option>
+                        <option value="repair">Repair</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Assign To (Technician)</label>
+                    <select class="form-select" id="maintAssigned">
+                        <option value="">— Unassigned —</option>
+                        {% for tech in technicians %}
+                        <option value="{{ tech.name }}">{{ tech.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" id="maintNotes" rows="3"></textarea>
+                </div>
+                <div id="maintMsg" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="submitMaintenance(this)">Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Technician Modal -->
+<div class="modal fade" id="techModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">➕ Add Technician</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="techName">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="techEmail">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="techPhone">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Employee ID</label>
+                    <input type="text" class="form-control" id="techEmployeeId">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Assign to Machine</label>
+                    <select class="form-select" id="techMachine">
+                        <option value="">— None —</option>
+                        {% for m in machines %}
+                        <option value="{{ m.machine_id }}">{{ m.name or m.machine_id }} ({{ m.location or '' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="techMsg" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createTechnician(this)">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Scroll to #profile anchor on page load (when arriving from Profile dropdown)
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.location.hash === '#profile') {
+        const el = document.getElementById('profile');
+        if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function showMsg(elId, msg, type) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.style.display = 'block';
+    el.className = `alert alert-${type} py-2 mb-2`;
+    el.textContent = msg;
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+async function postJSON(url, payload) {
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    return r.json();
+}
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+async function updateProfile() {
+    const fullName = document.getElementById('fullName').value.trim();
+    if (!fullName) { showMsg('profileMsg', 'Full name is required.', 'danger'); return; }
+    try {
+        const res = await postJSON('/api/settings/profile', {
+            fullName,
+            phone: document.getElementById('phone').value.trim()
+        });
+        showMsg('profileMsg', res.message, res.success ? 'success' : 'danger');
+        if (res.success) {
+            // Only update initials if no photo has been previewed
+            const circle = document.getElementById('avatarCircle');
+            if (!circle.querySelector('img')) {
+                circle.innerHTML = `<span id="avatarInitials">${fullName.substring(0, 2).toUpperCase()}</span>`;
+            }
+        }
+    } catch { showMsg('profileMsg', 'Network error. Please try again.', 'danger'); }
+}
+
+// ── Password ──────────────────────────────────────────────────────────────────
+async function updateSecurity() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword     = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showMsg('securityMsg', 'All password fields are required.', 'danger'); return;
+    }
+    if (newPassword !== confirmPassword) {
+        showMsg('securityMsg', 'New passwords do not match.', 'danger'); return;
+    }
+    if (newPassword.length < 8) {
+        showMsg('securityMsg', 'New password must be at least 8 characters.', 'danger'); return;
+    }
+    try {
+        const res = await postJSON('/api/settings/password', { currentPassword, newPassword, confirmPassword });
+        showMsg('securityMsg', res.message, res.success ? 'success' : 'danger');
+        if (res.success) {
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        }
+    } catch { showMsg('securityMsg', 'Network error. Please try again.', 'danger'); }
+}
+
+// ── System Config ─────────────────────────────────────────────────────────────
+async function saveSystemConfig(btn) {
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    try {
+        const res = await postJSON('/api/settings/system', {
+            pointsPerBottle:    document.getElementById('pointsPerBottle').value,
+            bonusMultiplier:    document.getElementById('bonusMultiplier').value,
+            minimumRedemption:  document.getElementById('minimumRedemption').value,
+            machineCapacity:    document.getElementById('machineCapacity').value,
+            maintenanceInterval:document.getElementById('maintenanceInterval').value,
+            fullThreshold:      document.getElementById('fullThreshold').value,
+        });
+        showMsg('systemMsg', res.message, res.success ? 'success' : 'danger');
+    } catch { showMsg('systemMsg', 'Network error.', 'danger'); }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+}
+
+// ── Save All ──────────────────────────────────────────────────────────────────
+async function saveAllSettings(btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    try {
+        const [p, s, sys] = await Promise.all([
+            postJSON('/api/settings/profile', {
+                fullName: document.getElementById('fullName').value.trim(),
+                phone: document.getElementById('phone').value.trim()
+            }),
+            document.getElementById('currentPassword').value
+                ? postJSON('/api/settings/password', {
+                    currentPassword: document.getElementById('currentPassword').value,
+                    newPassword: document.getElementById('newPassword').value,
+                    confirmPassword: document.getElementById('confirmPassword').value
+                  })
+                : Promise.resolve({ success: true, message: '' }),
+            postJSON('/api/settings/system', {
+                pointsPerBottle:    document.getElementById('pointsPerBottle').value,
+                bonusMultiplier:    document.getElementById('bonusMultiplier').value,
+                minimumRedemption:  document.getElementById('minimumRedemption').value,
+                machineCapacity:    document.getElementById('machineCapacity').value,
+                maintenanceInterval:document.getElementById('maintenanceInterval').value,
+                fullThreshold:      document.getElementById('fullThreshold').value,
+            })
+        ]);
+        const failed = [p, s, sys].filter(r => !r.success && r.message);
+        if (failed.length) {
+            alert('Some settings could not be saved:\n' + failed.map(r => r.message).join('\n'));
+        } else {
+            alert('All settings saved successfully!');
+        }
+        if (p.success) document.querySelector('.profile-avatar').textContent =
+            document.getElementById('fullName').value.trim().substring(0, 2).toUpperCase();
+    } catch { alert('Network error. Please try again.'); }
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save"></i> Save All Changes';
+    lucide.createIcons();
+}
+
+// ── Change Photo ──────────────────────────────────────────────────────────────
+function triggerPhotoInput() {
+    document.getElementById('photoInput').click();
+}
+
+function previewPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const original = new Image();
+        original.onload = () => {
+            // Resize to max 250x250 to keep Firestore document size reasonable
+            const MAX = 250;
+            let w = original.width, h = original.height;
+            if (w > MAX || h > MAX) {
+                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(original, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            // Update preview immediately
+            const circle = document.getElementById('avatarCircle');
+            circle.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            // Upload to server
+            uploadPhoto(dataUrl);
+        };
+        original.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function uploadPhoto(dataUrl) {
+    try {
+        const res = await fetch('/api/settings/profile/photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photoData: dataUrl })
+        });
+        let data;
+        try { data = await res.json(); }
+        catch { data = { success: false, message: `Server error (HTTP ${res.status})` }; }
+        showMsg('profileMsg', data.message, data.success ? 'success' : 'danger');
+        if (data.success) {
+            // Update navbar avatar immediately without reload
+            const navAvatar = document.querySelector('.profile-btn .profile-avatar');
+            if (navAvatar) navAvatar.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        }
+    } catch (err) {
+        showMsg('profileMsg', `Upload failed: ${err.message || 'Network error'}`, 'danger');
+    }
+}
+
+// ── Schedule Maintenance ──────────────────────────────────────────────────────
+function openMaintenanceModal() {
+    document.getElementById('maintDate').value =
+        new Date().toISOString().split('T')[0];
+    new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
+}
+
+async function submitMaintenance(btn) {
+    const machineId = document.getElementById('maintMachine').value;
+    const date      = document.getElementById('maintDate').value;
+    if (!machineId || !date) {
+        showMsg('maintMsg', 'Machine and date are required.', 'danger'); return;
+    }
+    btn.disabled = true;
+    try {
+        const res = await postJSON('/api/settings/maintenance', {
+            machineId,
+            scheduledDate: date,
+            type:          document.getElementById('maintType').value,
+            assignedTo:    document.getElementById('maintAssigned').value,
+            notes:         document.getElementById('maintNotes').value,
+        });
+        showMsg('maintMsg', res.message, res.success ? 'success' : 'danger');
+        if (res.success) setTimeout(() =>
+            bootstrap.Modal.getInstance(document.getElementById('maintenanceModal')).hide(), 1200);
+    } catch { showMsg('maintMsg', 'Network error.', 'danger'); }
+    btn.disabled = false;
+}
+
+// ── Export Logs ───────────────────────────────────────────────────────────────
+function exportLogs() {
+    window.location.href = '/api/settings/logs/export?days=30';
+}
+
+// ── Technicians ───────────────────────────────────────────────────────────────
+function openTechModal() {
+    ['techName','techEmail','techPhone','techEmployeeId'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('techMachine').value = '';
+    document.getElementById('techMsg').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('techModal')).show();
+}
+
+async function createTechnician(btn) {
+    const name  = document.getElementById('techName').value.trim();
+    const email = document.getElementById('techEmail').value.trim();
+    if (!name || !email) {
+        showMsg('techMsg', 'Name and email are required.', 'danger'); return;
+    }
+    btn.disabled = true;
+    try {
+        const res = await postJSON('/api/settings/technicians', {
+            name,
+            email,
+            phone:           document.getElementById('techPhone').value.trim(),
+            employeeId:      document.getElementById('techEmployeeId').value.trim(),
+            assignedMachine: document.getElementById('techMachine').value,
+        });
+        showMsg('techMsg', res.message, res.success ? 'success' : 'danger');
+        if (res.success) {
+            // Add row to table immediately
+            const tbody = document.getElementById('techTableBody');
+            const empty = document.getElementById('techEmptyRow');
+            if (empty) empty.remove();
+            tbody.insertAdjacentHTML('beforeend', `
+                <tr id="tech-row-${res.id}">
+                    <td>${name}</td>
+                    <td>${email}</td>
+                    <td>${document.getElementById('techPhone').value.trim() || '—'}</td>
+                    <td>${document.getElementById('techEmployeeId').value.trim() || '—'}</td>
+                    <td>${document.getElementById('techMachine').options[document.getElementById('techMachine').selectedIndex].text.replace('— None —','—')}</td>
+                    <td><span class="status-badge success" style="font-size:0.7rem;">Active</span></td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="deleteTech('${res.id}', this)"><i data-lucide="trash-2"></i></button></td>
+                </tr>`);
+            lucide.createIcons();
+            setTimeout(() =>
+                bootstrap.Modal.getInstance(document.getElementById('techModal')).hide(), 1000);
+        }
+    } catch { showMsg('techMsg', 'Network error.', 'danger'); }
+    btn.disabled = false;
+}
+
+async function deleteTech(techId, btn) {
+    if (!confirm('Remove this technician?')) return;
+    btn.disabled = true;
+    try {
+        const r = await fetch(`/api/settings/technicians/${techId}`, { method: 'DELETE' });
+        const res = await r.json();
+        if (res.success) {
+            const row = document.getElementById(`tech-row-${techId}`);
+            if (row) row.remove();
+            if (!document.getElementById('techTableBody').querySelector('tr')) {
+                document.getElementById('techTableBody').innerHTML =
+                    '<tr id="techEmptyRow"><td colspan="7" class="text-muted text-center">No technicians yet.</td></tr>';
+            }
+        } else { alert(res.message); btn.disabled = false; }
+    } catch { alert('Network error.'); btn.disabled = false; }
+}
+
+// ── Theme preview ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('primaryColor').addEventListener('input', function () {
+        document.documentElement.style.setProperty('--accent-color', this.value);
+        document.querySelectorAll('.btn-primary').forEach(el => {
+            el.style.backgroundColor = this.value;
+            el.style.borderColor = this.value;
+        });
+    });
+
+    document.getElementById('logoUpload').addEventListener('change', function () {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = e => console.log('Logo ready:', file.name);
+            reader.readAsDataURL(file);
+        }
+    });
+});
+</script>
+{% endblock %}
